@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin System Management - BookShop</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="brand">BookShop <span>Admin</span></div>
+        <ul class="nav-links">
+            <li><div class="nav-item active" id="nav-staff">Staff Management</div></li>
+            <li><div class="nav-item" id="nav-stock">In Stock Products</div></li>
+            <li><div class="nav-item" id="nav-out">Out of Stock Data</div></li>
+            <li><div class="nav-item" id="nav-suppliers">Suppliers Database</div></li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="login.html" class="nav-item" style="color: #fca5a5;">Log Out</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="header">
+            <h1 id="page-title">Staff Management</h1>
+            <div class="admin-profile">
+                <div class="admin-avatar">A</div>
+                <span style="font-weight: 600; font-size: 0.9rem;">Store Admin Matrix</span>
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Staff Members</h3>
+                <div class="value">12</div>
+                <span class="badge badge-info">Active Operations</span>
+            </div>
+            <div class="stat-card">
+                <h3>Products In Stock</h3>
+                <div class="value">1,240</div>
+                <span class="badge badge-success">Healthy Supply</span>
+            </div>
+            <div class="stat-card">
+                <h3>Out of Stock Alert</h3>
+                <div class="value">4</div>
+                <span class="badge badge-danger">Immediate Action</span>
+            </div>
+            <div class="stat-card">
+                <h3>Registered Suppliers</h3>
+                <div class="value">8</div>
+                <span class="badge badge-warning">Global Partners</span>
+            </div>
+        </section>
+
+        <section class="data-section">
+            <div class="section-header">
+                <h2 id="table-title">Active Personnel Registry</h2>
+            </div>
+            <div class="table-responsive">
+                <table id="data-table">
+                    <thead>
+                        <tr id="table-headers">
+                            </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="index.js"></script>
+</body>
+</html>

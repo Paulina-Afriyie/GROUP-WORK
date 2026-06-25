@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - BookShop</title>
+    <link rel="stylesheet" href="index.css">
+   
+</head>
+<body>
+    <div class="back">
+           
+            <a href="home.html">Back home<span class="arrow">&rarr;</span></a>
+        </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Welcome Back</h2>
+                <p class="text-muted">Access your book shop dashboard</p>
+            </div>
+
+            <div class="role-tabs">
+                <button type="button" id="user-tab-btn" class="role-btn active">User Login</button>
+                <button type="button" id="admin-tab-btn" class="role-btn">Admin Login</button>
+            </div>
+
+            <form id="login-form">
+                <input type="hidden" id="user-role" value="user">
+
+                <div class="form-group">
+                    <label id="identity-label" for="email">Email Address</label>
+                    <input type="email" id="email" required placeholder="name@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+
+                <button type="submit" class="auth-submit-btn">Sign In</button>
+            </form>
+
+            <div class="auth-footer" id="signup-redirect">
+                Don't have an account? <a href="signup.html">Create account</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+</html>
