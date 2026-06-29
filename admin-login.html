@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - BookShop</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="back">
+        <a href="home.html">Back home<span class="arrow">&rarr;</span></a>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Admin Login</h2>
+                <p class="text-muted">Access the book shop management dashboard</p>
+            </div>
+
+            <form id="admin-login-form">
+                <div class="form-group">
+                    <label for="admin-email">Admin Email / ID</label>
+                    <input type="email" id="admin-email" required placeholder="admin@bookshop.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" required placeholder="Enter admin password">
+                </div>
+
+                <button type="submit" class="auth-submit-btn">Sign In as Admin</button>
+            </form>
+
+            <div class="auth-footer">
+                User account? <a href="login.html">Go to user login</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-login.js"></script>
+</body>
+</html>

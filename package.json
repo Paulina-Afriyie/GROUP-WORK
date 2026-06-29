@@ -1,0 +1,21 @@
+{
+  "name": "book-shop",
+  "version": "1.0.0",
+  "description": "Book shop frontend with a Node.js and MySQL backend starter.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "setup-db": "node setup-db.js",
+    "test-db": "node test-db.js",
+    "seed-admin": "node seed-admin.js",
+    "apply-erd": "node apply-erd-migration.js",
+    "consolidate-db": "node consolidate-db.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.10.2"
+  }
+}
