@@ -300,41 +300,62 @@ document.addEventListener("DOMContentLoaded", () => {
         staff: {
             title: "Staff Management",
             tableTitle: "Active Personnel Registry",
-            headers: ["Staff ID", "Name", "Role", "Email Access", "Actions"],
+            headers: ["Staff ID", "Staff Name", "Staff Username","Staff Role", "Staff password", "Actions"],
             rows: [
-                ["STF-091", "Alice Johnson", "Store Manager", "alice@bookshop.com"],
-                ["STF-102", "David Kwesi", "Inventory Clerk", "david@bookshop.com"],
-                ["STF-403", "Elena Rostova", "Head Curator", "elena@bookshop.com"]
+                
+            ]
+        },
+
+        products: {
+            title: "Products",
+            tableTitle: "Active Personnel Registry",
+            headers: ["Product ID", "Product Name", "Product Price", "Supplier ID","Category ID", "Actions"],
+            rows: [
+                
+            ]
+        },
+
+         category: {
+            title: "Category",
+            tableTitle: "Active Personnel Registry",
+            headers: ["Category ID","Category name", "Actions"],
+            rows: [
+                
             ]
         },
         stock: {
             title: "Products In Stock",
             tableTitle: "Available Book Inventory Logs",
-            headers: ["SKU Code", "Book Title", "Category", "Quantity Left", "Unit Price"],
+            headers: ["SKU Code", "Book Title", "Category", "Quantity Left", "Unit Price", "Actions"],
             rows: [
-                ["BK-8802", "Clean Code", "Technology", "45 units", "$34.99"],
-                ["BK-1109", "Atomic Habits", "Self-Help", "112 units", "$18.20"],
-                ["BK-3541", "Dune Chronicles", "Fiction", "28 units", "$22.50"]
+                
             ]
         },
         out: {
-            title: "Out of Stock Data",
+            title: "Out of Stock Products",
             tableTitle: "Critical Supply Depletion Catalog",
-            headers: ["SKU Code", "Depleted Title", "Last Supplier ID", "Status Log"],
+            headers: ["SKU Code", "Depleted Title", "Last Supplier ID", "Status Log" ,"Actions"],
             rows: [
-                ["BK-0092", "Introduction to Algorithms", "SUP-402", "Restock Ordered"],
-                ["BK-7710", "The Hobbit Deluxe Edition", "SUP-101", "Awaiting Shipment"]
+                
             ]
         },
         suppliers: {
             title: "Suppliers Database",
             tableTitle: "Verified Global Distribution Contractors",
-            headers: ["Supplier ID", "Company Name", "Contact Agent", "Corporate Email"],
+            headers: ["Supplier ID", "Supplier Name",  "Company name","Supplier_address", "Supplier_phone_number"],
             rows: [
-                ["SUP-101", "Global Press Dist.", "Marcus Vance", "orders@globalpress.com"],
-                ["SUP-402", "Apex Academic Supply", "Sarah Jenkins", "contact@apexedu.net"]
+               
+            ]
+        },
+        customers: {
+            title: "Customer/User Database",
+            tableTitle: "Registered User Accounts",
+            headers: ["Customer ID", "Customer Name", "Customer Address", "Customer phone number","Customer Email"],
+            rows: [
+                
             ]
         }
+
     };
 
     // DOM UI Selection Points
@@ -367,9 +388,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Bind event controllers to sidebar links layout grid structure
     const routingMap = {
         "nav-staff": "staff",
+        "nav-products": "products",
+        "nav-category": "category",
         "nav-stock": "stock",
         "nav-out": "out",
-        "nav-suppliers": "suppliers"
+        "nav-suppliers": "suppliers",
+        "nav-customers": "customers" // Placeholder for future customer database integration
     };
 
     navItems.forEach(item => {
