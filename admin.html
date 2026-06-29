@@ -18,6 +18,8 @@
             <li><div class="nav-item" data-section="out">Out of Stock Products</div></li>
             <li><div class="nav-item" data-section="suppliers">Suppliers Database</div></li>
             <li><div class="nav-item" data-section="customers">Customer/User Database</div></li>
+            <li><div class="nav-item" data-section="sales">Sales</div></li>
+            <li><div class="nav-item" data-section="salesDetails">Sales Details</div></li>
         </ul>
         <div class="sidebar-footer">
             <a href="admin-login.html" class="nav-item" style="color: #fca5a5;">Log Out</a>
@@ -59,7 +61,9 @@
         <section class="data-section">
             <div class="section-header">
                 <h2 id="table-title">Active Personnel Registry</h2>
+                <button class="primary-action-btn" id="toggle-form-btn" type="button">Add Record</button>
             </div>
+            <form class="record-form hidden" id="record-form"></form>
             <div class="table-responsive">
                 <table id="data-table">
                     <thead>

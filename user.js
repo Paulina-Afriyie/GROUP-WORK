@@ -1,3 +1,5 @@
+const API_BASE = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+
 let booksData = [
     {
         id: 1,
@@ -61,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadBooks() {
     try {
-        const response = await fetch("/api/books");
+        const response = await fetch(`${API_BASE}/api/books`);
 
         if (!response.ok) {
             throw new Error("Book request failed");

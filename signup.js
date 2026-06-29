@@ -1,3 +1,5 @@
+const API_BASE = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+
 document.addEventListener("DOMContentLoaded", () => {
     const signupForm = document.getElementById("signup-form");
 
@@ -20,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         try {
-            const response = await fetch("/api/signup", {
+            const response = await fetch(`${API_BASE}/api/signup`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(user)

@@ -12,6 +12,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+function emptyToNull(value) {
+    return value === "" || value === undefined ? null : value;
+}
+
 app.get("/api/books", async (req, res) => {
     try {
         const [books] = await db.query(`
@@ -106,6 +110,269 @@ app.post("/api/login", async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: "Could not log in." });
+    }
+});
+
+const adminLists = {
+    staff: `
+        SELECT staff_ID, staff_name, staff_username, staff_role
+        FROM staff
+        ORDER BY staff_ID DESC
+    `,
+    products: `
+        SELECT
+            product.product_ID,
+            product.product_name,
+            product.product_author,
+            product.product_price,
+            product.product_quantity_in_stock,
+            product.supplier_ID,
+            product.category_ID,
+            product.product_image
+        FROM product
+        ORDER BY product.product_ID DESC
+    `,
+    category: `
+        SELECT category_ID, category_name
+        FROM category
+        ORDER BY category_ID DESC
+    `,
+    suppliers: `
+        SELECT supplier_ID, supplier_name, supplier_address, supplier_phone_number
+        FROM supplier
+        ORDER BY supplier_ID DESC
+    `,
+    customers: `
+        SELECT customer_ID, customer_name, customer_address, customer_phone_number, customer_email
+        FROM customer
+        ORDER BY customer_ID DESC
+    `,
+    sales: `
+        SELECT sales_ID, sales_date, sales_total_amount, staff_ID, customer_ID
+        FROM sales
+        ORDER BY sales_ID DESC
+    `,
+    salesDetails: `
+        SELECT sales_details_ID, sales_ID, product_ID, sales_details_quantity, sales_details_price
+        FROM sales_details
+        ORDER BY sales_details_ID DESC
+    `,
+    stock: `
+        SELECT product_ID, product_name, product_author, product_quantity_in_stock, product_price
+        FROM product
+        WHERE product_quantity_in_stock > 0
+        ORDER BY product_ID DESC
+    `,
+    out: `
+        SELECT product_ID, product_name, supplier_ID, 'Out of stock' AS status
+        FROM product
+        WHERE product_quantity_in_stock <= 0
+        ORDER BY product_ID DESC
+    `
+};
+
+app.get("/api/admin/:section", async (req, res) => {
+    try {
+        const query = adminLists[req.params.section];
+
+        if (!query) {
+            return res.status(404).json({ message: "Unknown admin section." });
+        }
+
+        const [rows] = await db.query(query);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ message: "Could not load admin records." });
+    }
+});
+
+app.post("/api/admin/category", async (req, res) => {
+    try {
+        const { category_name } = req.body;
+
+        if (!category_name) {
+            return res.status(400).json({ message: "Category name is required." });
+        }
+
+        await db.query("INSERT INTO category (category_name) VALUES (?)", [category_name]);
+        res.status(201).json({ message: "Category added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add category." });
+    }
+});
+
+app.post("/api/admin/suppliers", async (req, res) => {
+    try {
+        const { supplier_name, supplier_address, supplier_phone_number } = req.body;
+
+        if (!supplier_name) {
+            return res.status(400).json({ message: "Supplier name is required." });
+        }
+
+        await db.query(
+            "INSERT INTO supplier (supplier_name, supplier_address, supplier_phone_number) VALUES (?, ?, ?)",
+            [supplier_name, emptyToNull(supplier_address), emptyToNull(supplier_phone_number)]
+        );
+
+        res.status(201).json({ message: "Supplier added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add supplier." });
+    }
+});
+
+app.post("/api/admin/products", async (req, res) => {
+    try {
+        const {
+            product_name,
+            product_author,
+            product_price,
+            product_quantity_in_stock,
+            supplier_ID,
+            category_ID,
+            product_image
+        } = req.body;
+
+        if (!product_name || product_price === undefined) {
+            return res.status(400).json({ message: "Product name and price are required." });
+        }
+
+        await db.query(
+            `INSERT INTO product (
+                product_name,
+                product_author,
+                product_price,
+                product_quantity_in_stock,
+                supplier_ID,
+                category_ID,
+                product_image
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+                product_name,
+                emptyToNull(product_author),
+                product_price,
+                product_quantity_in_stock || 0,
+                emptyToNull(supplier_ID),
+                emptyToNull(category_ID),
+                emptyToNull(product_image)
+            ]
+        );
+
+        res.status(201).json({ message: "Product added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add product." });
+    }
+});
+
+app.post("/api/admin/customers", async (req, res) => {
+    try {
+        const { customer_name, customer_address, customer_phone_number, customer_email } = req.body;
+
+        if (!customer_name || !customer_email) {
+            return res.status(400).json({ message: "Customer name and email are required." });
+        }
+
+        await db.query(
+            `INSERT INTO customer (
+                customer_name,
+                customer_address,
+                customer_phone_number,
+                customer_email
+            ) VALUES (?, ?, ?, ?)`,
+            [
+                customer_name,
+                emptyToNull(customer_address),
+                emptyToNull(customer_phone_number),
+                customer_email
+            ]
+        );
+
+        res.status(201).json({ message: "Customer added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add customer." });
+    }
+});
+
+app.post("/api/admin/staff", async (req, res) => {
+    try {
+        const { staff_name, staff_username, staff_role, staff_password } = req.body;
+
+        if (!staff_name || !staff_username || !staff_role || !staff_password) {
+            return res.status(400).json({ message: "All staff fields are required." });
+        }
+
+        const passwordHash = await bcrypt.hash(staff_password, 10);
+
+        await db.query(
+            `INSERT INTO staff (staff_name, staff_username, staff_role, staff_password)
+             VALUES (?, ?, ?, ?)`,
+            [staff_name, staff_username, staff_role, passwordHash]
+        );
+
+        await db.query(
+            `INSERT INTO users (fullname, email, password_hash, role)
+             VALUES (?, ?, ?, 'admin')
+             ON DUPLICATE KEY UPDATE
+                fullname = VALUES(fullname),
+                password_hash = VALUES(password_hash),
+                role = 'admin'`,
+            [staff_name, staff_username, passwordHash]
+        );
+
+        res.status(201).json({ message: "Staff member added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add staff member." });
+    }
+});
+
+app.post("/api/admin/sales", async (req, res) => {
+    try {
+        const { sales_date, sales_total_amount, staff_ID, customer_ID } = req.body;
+
+        await db.query(
+            `INSERT INTO sales (sales_date, sales_total_amount, staff_ID, customer_ID)
+             VALUES (COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?)`,
+            [
+                emptyToNull(sales_date),
+                sales_total_amount || 0,
+                emptyToNull(staff_ID),
+                emptyToNull(customer_ID)
+            ]
+        );
+
+        res.status(201).json({ message: "Sale added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add sale." });
+    }
+});
+
+app.post("/api/admin/salesDetails", async (req, res) => {
+    try {
+        const { sales_ID, product_ID, sales_details_quantity, sales_details_price } = req.body;
+
+        if (!sales_ID || !product_ID || !sales_details_quantity || sales_details_price === undefined) {
+            return res.status(400).json({ message: "Sale, product, quantity, and price are required." });
+        }
+
+        await db.query(
+            `INSERT INTO sales_details (
+                sales_ID,
+                product_ID,
+                sales_details_quantity,
+                sales_details_price
+            ) VALUES (?, ?, ?, ?)`,
+            [sales_ID, product_ID, sales_details_quantity, sales_details_price]
+        );
+
+        await db.query(
+            `UPDATE product
+             SET product_quantity_in_stock = GREATEST(product_quantity_in_stock - ?, 0)
+             WHERE product_ID = ?`,
+            [sales_details_quantity, product_ID]
+        );
+
+        res.status(201).json({ message: "Sale detail added." });
+    } catch (error) {
+        res.status(500).json({ message: "Could not add sale detail." });
     }
 });
 
