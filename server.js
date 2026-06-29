@@ -324,6 +324,125 @@ app.post("/api/admin/staff", async (req, res) => {
     }
 });
 
+app.put("/api/admin/:section/:id", async (req, res) => {
+    try {
+        const { section, id } = req.params;
+        const payload = req.body;
+
+        switch (section) {
+            case 'category': {
+                const { category_name } = payload;
+                if (!category_name) return res.status(400).json({ message: 'Category name is required.' });
+                await db.query('UPDATE category SET category_name = ? WHERE category_ID = ?', [category_name, id]);
+                return res.json({ message: 'Category updated.' });
+            }
+            case 'suppliers': {
+                const { supplier_name, supplier_address, supplier_phone_number } = payload;
+                if (!supplier_name) return res.status(400).json({ message: 'Supplier name is required.' });
+                await db.query(
+                    'UPDATE supplier SET supplier_name = ?, supplier_address = ?, supplier_phone_number = ? WHERE supplier_ID = ?',
+                    [supplier_name, emptyToNull(supplier_address), emptyToNull(supplier_phone_number), id]
+                );
+                return res.json({ message: 'Supplier updated.' });
+            }
+            case 'products': {
+                const {
+                    product_name,
+                    product_author,
+                    product_price,
+                    product_quantity_in_stock,
+                    supplier_ID,
+                    category_ID,
+                    product_image
+                } = payload;
+                if (!product_name || product_price === undefined) return res.status(400).json({ message: 'Product name and price are required.' });
+                await db.query(
+                    `UPDATE product SET
+                        product_name = ?,
+                        product_author = ?,
+                        product_price = ?,
+                        product_quantity_in_stock = ?,
+                        supplier_ID = ?,
+                        category_ID = ?,
+                        product_image = ?
+                     WHERE product_ID = ?`,
+                    [
+                        product_name,
+                        emptyToNull(product_author),
+                        product_price,
+                        product_quantity_in_stock || 0,
+                        emptyToNull(supplier_ID),
+                        emptyToNull(category_ID),
+                        emptyToNull(product_image),
+                        id
+                    ]
+                );
+                return res.json({ message: 'Product updated.' });
+            }
+            case 'customers': {
+                const { customer_name, customer_address, customer_phone_number, customer_email } = payload;
+                if (!customer_name || !customer_email) return res.status(400).json({ message: 'Customer name and email are required.' });
+                await db.query(
+                    `UPDATE customer SET
+                        customer_name = ?,
+                        customer_address = ?,
+                        customer_phone_number = ?,
+                        customer_email = ?
+                     WHERE customer_ID = ?`,
+                    [customer_name, emptyToNull(customer_address), emptyToNull(customer_phone_number), customer_email, id]
+                );
+                return res.json({ message: 'Customer updated.' });
+            }
+            case 'staff': {
+                const { staff_name, staff_username, staff_role, staff_password, original_staff_username } = payload;
+                if (!staff_name || !staff_username || !staff_role) return res.status(400).json({ message: 'Staff name, username, and role are required.' });
+                const originalEmail = original_staff_username || staff_username;
+                await db.query(
+                    `UPDATE staff SET
+                        staff_name = ?,
+                        staff_username = ?,
+                        staff_role = ?
+                     WHERE staff_ID = ?`,
+                    [staff_name, staff_username, staff_role, id]
+                );
+                if (staff_password) {
+                    const passwordHash = await bcrypt.hash(staff_password, 10);
+                    await db.query('UPDATE staff SET staff_password = ? WHERE staff_ID = ?', [passwordHash, id]);
+                    await db.query(
+                        `UPDATE users SET fullname = ?, email = ?, password_hash = ? WHERE email = ?`,
+                        [staff_name, staff_username, passwordHash, originalEmail]
+                    );
+                } else {
+                    await db.query(
+                        `UPDATE users SET fullname = ?, email = ? WHERE email = ?`,
+                        [staff_name, staff_username, originalEmail]
+                    );
+                }
+                return res.json({ message: 'Staff member updated.' });
+            }
+            case 'sales': {
+                const { sales_date, sales_total_amount, staff_ID, customer_ID } = payload;
+                if (sales_total_amount === undefined) return res.status(400).json({ message: 'Total amount is required.' });
+                await db.query(
+                    `UPDATE sales SET
+                        sales_date = COALESCE(?, sales_date),
+                        sales_total_amount = ?,
+                        staff_ID = ?,
+                        customer_ID = ?
+                     WHERE sales_ID = ?`,
+                    [emptyToNull(sales_date), sales_total_amount, emptyToNull(staff_ID), emptyToNull(customer_ID), id]
+                );
+                return res.json({ message: 'Sale updated.' });
+            }
+            default:
+                return res.status(404).json({ message: 'Update not supported for this section.' });
+        }
+    } catch (error) {
+        console.error('Update error', error);
+        res.status(500).json({ message: 'Could not update record.' });
+    }
+});
+
 app.post("/api/admin/sales", async (req, res) => {
     try {
         const { sales_date, sales_total_amount, staff_ID, customer_ID } = req.body;

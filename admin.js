@@ -7,11 +7,13 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Active Personnel Registry",
             headers: ["Staff ID", "Staff Name", "Staff Username", "Staff Role"],
             endpoint: "staff",
+            idField: "staff_ID",
+            canEdit: true,
             fields: [
                 { name: "staff_name", label: "Staff Name", type: "text", required: true },
                 { name: "staff_username", label: "Staff Email / Username", type: "email", required: true },
                 { name: "staff_role", label: "Staff Role", type: "text", required: true },
-                { name: "staff_password", label: "Password", type: "password", required: true }
+                { name: "staff_password", label: "Password", type: "password" }
             ]
         },
         products: {
@@ -19,6 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Book Product Registry",
             headers: ["Product ID", "Product Name", "Author", "Price", "Quantity", "Supplier ID", "Category ID", "Image"],
             endpoint: "products",
+            idField: "product_ID",
+            canEdit: true,
             fields: [
                 { name: "product_name", label: "Product Name", type: "text", required: true },
                 { name: "product_author", label: "Author", type: "text" },
@@ -34,9 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Book Categories",
             headers: ["Category ID", "Category Name"],
             endpoint: "category",
+            idField: "category_ID",
+            canEdit: true,
             fields: [
-                { name: "category_name", label: "Category Name", type: "text", required: true },
-                { name: "category_id", label: "Category ID", type: "text", required: true }
+                { name: "category_name", label: "Category Name", type: "text", required: true }
             ]
         },
         stock: {
@@ -58,6 +63,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Verified Suppliers",
             headers: ["Supplier ID", "Supplier Name", "Address", "Phone Number"],
             endpoint: "suppliers",
+            idField: "supplier_ID",
+            canEdit: true,
             fields: [
                 { name: "supplier_name", label: "Supplier Name", type: "text", required: true },
                 { name: "supplier_address", label: "Address", type: "text" },
@@ -69,6 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Registered Customers",
             headers: ["Customer ID", "Customer Name", "Address", "Phone Number", "Email"],
             endpoint: "customers",
+            idField: "customer_ID",
+            canEdit: true,
             fields: [
                 { name: "customer_name", label: "Customer Name", type: "text", required: true },
                 { name: "customer_address", label: "Address", type: "text" },
@@ -81,6 +90,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Sales Records",
             headers: ["Sales ID", "Sales Date", "Total Amount", "Staff ID", "Customer ID"],
             endpoint: "sales",
+            idField: "sales_ID",
+            canEdit: true,
             fields: [
                 { name: "sales_date", label: "Sales Date", type: "datetime-local" },
                 { name: "sales_total_amount", label: "Total Amount", type: "number", step: "0.01", required: true },
@@ -93,6 +104,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tableTitle: "Sale Line Items",
             headers: ["Sales Details ID", "Sales ID", "Product ID", "Quantity", "Price"],
             endpoint: "salesDetails",
+            idField: "sales_details_ID",
+            canEdit: false,
             fields: [
                 { name: "sales_ID", label: "Sales ID", type: "number", required: true },
                 { name: "product_ID", label: "Product ID", type: "number", required: true },
@@ -111,6 +124,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const toggleFormBtn = document.getElementById("toggle-form-btn");
 
     let activeSection = "staff";
+    let editMode = false;
+    let editRecordId = null;
 
     function formatCell(value) {
         if (value === null || value === undefined || value === "") return "-";
@@ -129,6 +144,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         toggleFormBtn.classList.remove("hidden");
 
+        const hiddenInput = data.idField ? `<input type="hidden" name="${data.idField}" id="${data.idField}">` : "";
+        const originalStaffInput = editMode && sectionKey === 'staff' ? `<input type="hidden" name="original_staff_username" id="original_staff_username">` : "";
+        const submitLabel = editMode ? "Update Record" : "Save Record";
+
         const fields = data.fields.map((field) => `
             <label class="record-field">
                 <span>${field.label}</span>
@@ -143,14 +162,23 @@ document.addEventListener("DOMContentLoaded", () => {
         `).join("");
 
         form.innerHTML = `
+            ${hiddenInput}${originalStaffInput}
             <div class="record-form-grid">${fields}</div>
             <div class="record-form-actions">
                 <button class="secondary-action-btn" type="button" id="cancel-form-btn">Cancel</button>
-                <button class="primary-action-btn" type="submit">Save Record</button>
+                <button class="primary-action-btn" type="submit">${submitLabel}</button>
             </div>
         `;
 
+        if (editMode && data.idField && editRecordId !== null) {
+            const hidden = form.querySelector(`#${data.idField}`);
+            if (hidden) hidden.value = editRecordId;
+        }
+
         document.getElementById("cancel-form-btn").addEventListener("click", () => {
+            editMode = false;
+            editRecordId = null;
+            toggleFormBtn.textContent = "Add Record";
             form.reset();
             form.classList.add("hidden");
         });
@@ -274,15 +302,40 @@ document.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(tick);
     }
 
+    function openEditForm(row) {
+        if (!row || !dashboardData[activeSection] || !dashboardData[activeSection].canEdit) return;
+        editMode = true;
+        editRecordId = row[dashboardData[activeSection].idField];
+        buildForm(activeSection);
+        toggleFormBtn.textContent = "Edit Record";
+        form.classList.remove("hidden");
+        form.reset();
+
+        Object.entries(row).forEach(([key, value]) => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) input.value = value === null ? "" : value;
+        });
+        if (row.staff_username) {
+            const original = form.querySelector('#original_staff_username');
+            if (original) original.value = row.staff_username;
+        }
+    }
+
     async function loadSection(sectionKey) {
         const data = dashboardData[sectionKey];
         if (!data) return;
 
+        editMode = false;
+        editRecordId = null;
+        toggleFormBtn.textContent = "Add Record";
         activeSection = sectionKey;
         pageTitle.innerText = data.title;
         tableTitle.innerText = data.tableTitle;
         tableHeaders.innerHTML = data.headers.map((header) => `<th>${header}</th>`).join("");
-        tableBody.innerHTML = `<tr><td colspan="${data.headers.length}">Loading records...</td></tr>`;
+        if (data.canEdit) {
+            tableHeaders.innerHTML += `<th>Actions</th>`;
+        }
+        tableBody.innerHTML = `<tr><td colspan="${data.headers.length + (data.canEdit ? 1 : 0)}">Loading records...</td></tr>`;
         buildForm(sectionKey);
 
         try {
@@ -294,21 +347,36 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (rows.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="${data.headers.length}">No records found.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="${data.headers.length + (data.canEdit ? 1 : 0)}">No records found.</td></tr>`;
                 return;
             }
 
             tableBody.innerHTML = rows.map((row) => {
                 const values = Object.values(row);
                 const cells = values.map((cell) => `<td>${formatCell(cell)}</td>`).join("");
-                return `<tr>${cells}</tr>`;
+                const actionCell = data.canEdit ? `<td><button class="action-btn edit-btn" type="button" data-id="${row[data.idField]}">Edit</button></td>` : "";
+                return `<tr>${cells}${actionCell}</tr>`;
             }).join("");
+
+            if (data.canEdit) {
+                tableBody.querySelectorAll('.edit-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const id = btn.dataset.id;
+                        const row = rows.find((r) => String(r[data.idField]) === String(id));
+                        openEditForm(row);
+                    });
+                });
+            }
         } catch (error) {
             tableBody.innerHTML = `<tr><td colspan="${data.headers.length}">${error.message}</td></tr>`;
         }
     }
 
     toggleFormBtn.addEventListener("click", () => {
+        editMode = false;
+        editRecordId = null;
+        toggleFormBtn.textContent = "Add Record";
+        buildForm(activeSection);
         form.classList.toggle("hidden");
     });
     form.addEventListener("submit", async (event) => {
@@ -317,10 +385,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = dashboardData[activeSection];
         const formData = new FormData(form);
         const payload = Object.fromEntries(formData.entries());
+        const isUpdate = editMode && editRecordId;
+        const url = isUpdate ? `${API_BASE}/api/admin/${data.endpoint}/${editRecordId}` : `${API_BASE}/api/admin/${data.endpoint}`;
+        const method = isUpdate ? "PUT" : "POST";
 
         try {
-            const response = await fetch(`${API_BASE}/api/admin/${data.endpoint}`, {
-                method: "POST",
+            const response = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
@@ -328,10 +399,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await response.json();
 
             if (!response.ok) {
-                alert(result.message || "Could not save record.");
+                alert(result.message || (isUpdate ? "Could not update record." : "Could not save record."));
                 return;
             }
 
+            editMode = false;
+            editRecordId = null;
+            toggleFormBtn.textContent = "Add Record";
             form.reset();
             form.classList.add("hidden");
             await loadSection(activeSection);

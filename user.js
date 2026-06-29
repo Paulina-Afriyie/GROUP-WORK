@@ -39,7 +39,7 @@ let booksData = [
     },
     {
         id: 5,
-        title: "Eloquent JavaScript",
+        title: "English Book",
         author: "Marijn Haverbeke",
         price: 28.99,
         category: "tech",
@@ -54,7 +54,11 @@ let booksData = [
         category: "self-help",
         stock: 1,
         image: "images/The Joys of Motherhood.jpg"
+        
     }
+
+
+    
 ];
 
 let cart = [];
