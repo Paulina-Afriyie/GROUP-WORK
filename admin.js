@@ -156,6 +156,124 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function animateStats() {
+        const statCards = document.querySelectorAll('.stat-card');
+        statCards.forEach((card) => {
+            const valueEl = card.querySelector('.value');
+            if (!valueEl) return;
+            const raw = valueEl.textContent.trim().replace(/,/g, '') || '0';
+            const target = parseInt(raw, 10) || 0;
+            const duration = 900 + Math.floor(Math.random() * 800);
+            const start = performance.now();
+
+            function frame(now) {
+                const t = Math.min((now - start) / duration, 1);
+                const current = Math.floor(t * target);
+                valueEl.textContent = current.toLocaleString();
+                const bar = card.querySelector('.stat-bar > i');
+                if (bar) {
+                    const pct = Math.min(100, Math.round((t * (target > 0 ? Math.min(target, 1000) : 0)) / (target || 1) * 100));
+                    bar.style.width = pct + '%';
+                }
+                if (t < 1) requestAnimationFrame(frame);
+                else valueEl.textContent = target.toLocaleString();
+            }
+
+            // ensure a stat-bar exists (for older markup it's harmless)
+            if (!card.querySelector('.stat-bar')) {
+                const barWrap = document.createElement('div');
+                barWrap.className = 'stat-bar';
+                const barInner = document.createElement('i');
+                barWrap.appendChild(barInner);
+                card.appendChild(barWrap);
+            }
+
+            requestAnimationFrame(frame);
+        });
+    }
+
+    async function fetchStats() {
+        const cards = Array.from(document.querySelectorAll('.stat-card[data-endpoint]'));
+        if (!cards.length) return;
+
+        await Promise.all(cards.map(async (card) => {
+            const endpoint = card.dataset.endpoint;
+            const mode = card.dataset.mode || 'count';
+            const sumKey = card.dataset.sumkey;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/admin/${endpoint}`);
+                if (!res.ok) {
+                    console.warn('fetchStats: non-ok response', endpoint, res.status);
+                    return;
+                }
+                const rows = await res.json();
+
+                let value = 0;
+                if (mode === 'sum') {
+                    // prefer explicit sumKey, otherwise try common names
+                    const keysToTry = sumKey ? [sumKey] : [
+                        'product_quantity_in_stock', 'quantity', 'product_quantity', 'stock', 'product_stock'
+                    ];
+
+                    if (rows.length && typeof rows[0] === 'object') {
+                        let found = false;
+                        for (const k of keysToTry) {
+                            if (rows[0] && Object.prototype.hasOwnProperty.call(rows[0], k)) {
+                                value = rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            // fallback: sum first numeric field we find
+                            const sample = rows[0];
+                            const numericKey = Object.keys(sample).find((kk) => !isNaN(Number(sample[kk])));
+                            if (numericKey) {
+                                value = rows.reduce((s, r) => s + (Number(r[numericKey]) || 0), 0);
+                            } else {
+                                value = 0;
+                            }
+                        }
+                    }
+                } else {
+                    value = Array.isArray(rows) ? rows.length : 0;
+                }
+
+                console.debug('fetchStats:', endpoint, 'mode=', mode, 'value=', value, 'rows=', Array.isArray(rows) ? rows.length : typeof rows);
+
+                const valueEl = card.querySelector('.value');
+                if (valueEl) animateValue(valueEl, value);
+
+                // Fill the small stat bar (log-scale to keep visual range reasonable)
+                const bar = card.querySelector('.stat-bar > i');
+                if (bar) {
+                    const pct = Math.min(100, Math.round(Math.log10(value + 1) / 3 * 100));
+                    bar.style.width = pct + '%';
+                }
+            } catch (e) {
+                console.error('fetchStats error for', endpoint, e);
+            }
+        }));
+    }
+
+    function animateValue(el, target) {
+        const start = Number(el.textContent.replace(/,/g, '')) || 0;
+        const duration = 900 + Math.floor(Math.random() * 600);
+        const t0 = performance.now();
+
+        function tick(now) {
+            const t = Math.min(1, (now - t0) / duration);
+            const cur = Math.floor(start + (target - start) * t);
+            el.textContent = cur.toLocaleString();
+            if (t < 1) requestAnimationFrame(tick);
+            else el.textContent = target.toLocaleString();
+        }
+
+        requestAnimationFrame(tick);
+    }
+
     async function loadSection(sectionKey) {
         const data = dashboardData[sectionKey];
         if (!data) return;
@@ -181,7 +299,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             tableBody.innerHTML = rows.map((row) => {
-                const cells = Object.values(row).map((cell) => `<td>${formatCell(cell)}</td>`).join("");
+                const values = Object.values(row);
+                const cells = values.map((cell) => `<td>${formatCell(cell)}</td>`).join("");
                 return `<tr>${cells}</tr>`;
             }).join("");
         } catch (error) {
@@ -192,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleFormBtn.addEventListener("click", () => {
         form.classList.toggle("hidden");
     });
-
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
@@ -217,6 +335,8 @@ document.addEventListener("DOMContentLoaded", () => {
             form.reset();
             form.classList.add("hidden");
             await loadSection(activeSection);
+            // refresh stats after a successful change (small delay to ensure DB commit)
+            setTimeout(() => fetchStats(), 450);
         } catch (error) {
             alert("Could not save record. Check that the backend server is running.");
         }
@@ -229,6 +349,12 @@ document.addEventListener("DOMContentLoaded", () => {
             loadSection(item.dataset.section);
         });
     });
+
+    // Fetch live stats and animate them on page load
+    fetchStats().then(() => animateStats());
+
+    // Poll stats periodically
+    setInterval(fetchStats, 15000);
 
     loadSection(activeSection);
 });

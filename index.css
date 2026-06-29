@@ -376,6 +376,22 @@ body {
     color: white;
 }
 
+.low-stock-badge {
+    display: inline-block;
+    background: #fff1f2;
+    color: #991b1b;
+    padding: 0.18rem 0.45rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-left: 0.5rem;
+}
+
+.book-card.low-stock {
+    box-shadow: 0 8px 18px -6px rgba(220, 38, 38, 0.12);
+    border-color: rgba(220,38,38,0.08);
+}
+
 /* --- Sliding Cart Drawer --- */
 .cart-drawer {
     position: fixed;
@@ -425,6 +441,39 @@ body {
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
 }
+
+.qty-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.qty-control button {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: white;
+    cursor: pointer;
+    font-weight: 700;
+}
+.qty-number {
+    min-width: 28px;
+    text-align: center;
+    font-weight: 700;
+}
+
+.purchase {
+    border-bottom: 1px dashed var(--border-color);
+    padding: 0.75rem 0;
+}
+.purchase-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.purchase ul { margin-left: 1rem; margin-bottom: 0.5rem; }
+.purchase-total { font-weight: 700; }
 
 .cart-footer {
     border-top: 1px solid var(--border-color);

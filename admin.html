@@ -36,25 +36,25 @@
         </header>
 
         <section class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card" data-endpoint="staff" data-mode="count">
                 <h3>Total Staff Members</h3>
                 <div class="value">12</div>
-                <span class="badge badge-info">Active Operations</span>
+                <div class="stat-change"><span class="badge badge-info">Active Operations</span></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" data-endpoint="stock" data-mode="sum" data-sumkey="product_quantity_in_stock">
                 <h3>Products In Stock</h3>
                 <div class="value">1,240</div>
-                <span class="badge badge-success">Healthy Supply</span>
+                <div class="stat-change"><span class="badge badge-success">Healthy Supply</span></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" data-endpoint="out" data-mode="count">
                 <h3>Out of Stock Alert</h3>
                 <div class="value">4</div>
-                <span class="badge badge-danger">Immediate Action</span>
+                <div class="stat-change"><span class="badge badge-danger">Immediate Action</span></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" data-endpoint="suppliers" data-mode="count">
                 <h3>Registered Suppliers</h3>
                 <div class="value">8</div>
-                <span class="badge badge-warning">Global Partners</span>
+                <div class="stat-change"><span class="badge badge-warning">Global Partners</span></div>
             </div>
         </section>
 

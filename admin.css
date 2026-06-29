@@ -140,6 +140,8 @@ body {
     border-radius: 1rem;
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
 }
 
 .stat-card h3 {
@@ -154,6 +156,41 @@ body {
     font-size: 1.75rem;
     font-weight: 700;
     color: var(--text-main);
+}
+
+.stat-card::after {
+    content: "📚";
+    position: absolute;
+    right: 1rem;
+    top: 0.6rem;
+    font-size: 2.6rem;
+    opacity: 0.06;
+    transform: translateZ(0);
+    pointer-events: none;
+}
+
+.stat-change {
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.stat-bar {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+    width: 100%;
+    margin-top: 0.75rem;
+}
+.stat-bar > i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(79,70,229,0.9), rgba(99,102,241,0.9));
+    width: 0%;
 }
 
 .stat-card .badge {

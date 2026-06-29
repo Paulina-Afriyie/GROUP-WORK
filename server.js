@@ -328,7 +328,7 @@ app.post("/api/admin/sales", async (req, res) => {
     try {
         const { sales_date, sales_total_amount, staff_ID, customer_ID } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             `INSERT INTO sales (sales_date, sales_total_amount, staff_ID, customer_ID)
              VALUES (COALESCE(?, CURRENT_TIMESTAMP), ?, ?, ?)`,
             [
@@ -339,7 +339,8 @@ app.post("/api/admin/sales", async (req, res) => {
             ]
         );
 
-        res.status(201).json({ message: "Sale added." });
+        const insertedId = result && result.insertId ? result.insertId : null;
+        res.status(201).json({ message: "Sale added.", sales_ID: insertedId });
     } catch (error) {
         res.status(500).json({ message: "Could not add sale." });
     }
