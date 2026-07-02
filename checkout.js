@@ -1,6 +1,8 @@
 const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+const CUSTOMER_INFO_KEY = 'bookshop_checkout_info';
 
 let cart = [];
+let lastOrder = null;
 
 function loadCart() {
     try {
@@ -9,12 +11,77 @@ function loadCart() {
     } catch (error) {
         cart = [];
     }
+
+    if (!Array.isArray(cart) || cart.length === 0) {
+        try {
+            const preserved = window.name ? JSON.parse(window.name) : null;
+            if (preserved && Array.isArray(preserved.bookshop_cart)) {
+                cart = preserved.bookshop_cart;
+            }
+        } catch (error) {
+            // ignore invalid window.name content
+        }
+    }
+
+    if (!Array.isArray(cart)) {
+        cart = [];
+    }
+}
+
+
+function saveCustomerInfo() {
+    const form = document.getElementById('checkout-form');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const info = {};
+    formData.forEach((value, key) => {
+        info[key] = value;
+    });
+
+    localStorage.setItem(CUSTOMER_INFO_KEY, JSON.stringify(info));
+}
+
+function loadCustomerInfo() {
+    try {
+        const raw = localStorage.getItem(CUSTOMER_INFO_KEY);
+        if (!raw) return;
+        const info = JSON.parse(raw);
+        const form = document.getElementById('checkout-form');
+        if (!form || typeof info !== 'object' || info === null) return;
+
+        Object.entries(info).forEach(([key, value]) => {
+            const field = form.elements.namedItem(key);
+            if (field) {
+                field.value = value;
+            }
+        });
+    } catch (error) {
+        // ignore parse errors
+    }
 }
 
 function renderCheckoutItems() {
     const container = document.getElementById('checkout-items');
     const totalSpan = document.getElementById('checkout-total');
     container.innerHTML = '';
+
+    if ((!Array.isArray(cart) || cart.length === 0) && lastOrder && Array.isArray(lastOrder.items) && lastOrder.items.length > 0) {
+        lastOrder.items.forEach((item) => {
+            const row = document.createElement('div');
+            row.className = 'item';
+            row.innerHTML = `
+                <div>
+                    <strong>${item.title}</strong>
+                    <br><small>${item.quantity} × ₵${(Number(item.price) || 0).toFixed(2)}</small>
+                </div>
+                <div>₵${((Number(item.price) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</div>
+            `;
+            container.appendChild(row);
+        });
+        totalSpan.textContent = Number(lastOrder.total || 0).toFixed(2);
+        return;
+    }
 
     if (!Array.isArray(cart) || cart.length === 0) {
         container.innerHTML = '<p class="text-muted">Your cart is empty. Please add books before checking out.</p>';
@@ -87,6 +154,10 @@ function setupForm() {
     paymentMethod.addEventListener('change', updatePaymentFields);
     updatePaymentFields();
 
+    form.querySelectorAll('input, select, textarea').forEach((field) => {
+        field.addEventListener('change', saveCustomerInfo);
+    });
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!cart.length) {
@@ -110,6 +181,10 @@ function setupForm() {
                 throw new Error(err.message || 'Checkout failed.');
             }
 
+            lastOrder = {
+                items: cart.map((item) => ({ ...item })),
+                total: totalPrice
+            };
             clearCart();
             renderCheckoutItems();
             showSuccess();
@@ -122,5 +197,6 @@ function setupForm() {
 window.addEventListener('DOMContentLoaded', () => {
     loadCart();
     renderCheckoutItems();
+    loadCustomerInfo();
     setupForm();
 });

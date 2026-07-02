@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - BookStream</title>
+    <title>Bookshop Online Checkout</title>
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -11,11 +11,11 @@
         <section class="checkout-form">
             <div class="checkout-header">
                 <div>
-                    <p class="eyebrow">Secure checkout</p>
+                    <p class="eyebrow">Bookshop Online Checkout</p>
                     <h2>Complete your order</h2>
-                    <p class="checkout-help">Enter shipping and payment details below to finalize your purchase.</p>
+                    <p class="checkout-help">Enter shipping and payment details below to finalize your Bookshop purchase.</p>
                 </div>
-                <div class="checkout-badge">Safe & Secure</div>
+                <div class="checkout-badge">Bookshop Secure</div>
             </div>
 
             <div class="checkout-stepper">
@@ -24,25 +24,25 @@
                 <div class="step">3. Confirm</div>
             </div>
 
-            <form id="checkout-form">
+            <form id="checkout-form" autocomplete="on">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="fullname">Full name</label>
-                        <input type="text" id="fullname" name="fullname" required placeholder="John Doe">
+                        <input type="text" id="fullname" name="fullname" autocomplete="name" required placeholder="John Doe">
                     </div>
                     <div class="form-group">
                         <label for="email">Email address</label>
-                        <input type="email" id="email" name="email" required placeholder="john@example.com">
+                        <input type="email" id="email" name="email" autocomplete="email" required placeholder="john@example.com">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="address">Shipping address</label>
-                    <textarea id="address" name="address" placeholder="123 Main Street, City, Country" required></textarea>
+                    <textarea id="address" name="address" autocomplete="street-address" placeholder="123 Main Street, City, Country" required></textarea>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="payment-method">Payment method</label>
-                        <select id="payment-method" name="paymentMethod" required>
+                        <select id="payment-method" name="paymentMethod" autocomplete="off" required>
                             <option value="card">Credit / Debit Card</option>
                             <option value="mobile_money">Mobile Money</option>
                             <option value="paypal">PayPal</option>
@@ -51,23 +51,23 @@
                     </div>
                     <div class="form-group payment-card">
                         <label for="card-number">Card number</label>
-                        <input type="text" id="card-number" name="cardNumber" placeholder="1234 5678 9012 3456" required>
+                        <input type="text" id="card-number" name="cardNumber" autocomplete="cc-number" placeholder="1234 5678 9012 3456" required>
                     </div>
                 </div>
                 <div class="form-row payment-card">
                     <div class="form-group">
                         <label for="expiry">Expiry date</label>
-                        <input type="text" id="expiry" name="expiry" placeholder="MM/YY" required>
+                        <input type="text" id="expiry" name="expiry" autocomplete="cc-exp" placeholder="MM/YY" required>
                     </div>
                     <div class="form-group">
                         <label for="cvv">CVV</label>
-                        <input type="text" id="cvv" name="cvv" placeholder="123" required>
+                        <input type="text" id="cvv" name="cvv" autocomplete="cc-csc" placeholder="123" required>
                     </div>
                 </div>
                 <div class="form-row payment-mobile-money" style="display: none;">
                     <div class="form-group">
                         <label for="mobile-provider">Mobile Money Provider</label>
-                        <select id="mobile-provider" name="mobileProvider">
+                        <select id="mobile-provider" name="mobileProvider" autocomplete="off">
                             <option value="">Select provider</option>
                             <option value="mtn">MTN Mobile Money</option>
                             <option value="vodafone">Vodafone Cash</option>
@@ -76,7 +76,7 @@
                     </div>
                     <div class="form-group">
                         <label for="mobile-number">Mobile number</label>
-                        <input type="tel" id="mobile-number" name="mobileNumber" placeholder="024 123 4567">
+                        <input type="tel" id="mobile-number" name="mobileNumber" autocomplete="tel" placeholder="024 123 4567">
                     </div>
                 </div>
                 <button class="checkout-btn" type="submit">Place Order</button>

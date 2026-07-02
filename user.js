@@ -434,7 +434,11 @@ function setupCartUI() {
             alert("Your cart is empty.");
             return;
         }
-
+        try {
+            window.name = JSON.stringify({ bookshop_cart: cart });
+        } catch (e) {
+            // ignore serialization errors
+        }
         window.location.href = "checkout.html";
     });
 }

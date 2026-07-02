@@ -3,10 +3,91 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 const db = require("./src/db");
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const smtpConfigured = Boolean(
+    process.env.EMAIL_HOST &&
+    process.env.EMAIL_USER &&
+    process.env.EMAIL_PASS
+);
+
+let mailTransporter;
+let emailTransportReady = false;
+let emailTransportDetails = '';
+
+async function initializeMailTransporter() {
+    if (smtpConfigured) {
+        mailTransporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST,
+            port: Number(process.env.EMAIL_PORT) || 587,
+            secure: process.env.EMAIL_SECURE === "true",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+        try {
+            await mailTransporter.verify();
+            emailTransportReady = true;
+            emailTransportDetails = `SMTP:${process.env.EMAIL_HOST}`;
+            console.log("SMTP transporter is configured and ready to send emails.");
+        } catch (error) {
+            console.error("SMTP verification failed:", error);
+            emailTransportReady = false;
+        }
+    } else {
+        try {
+            const testAccount = await nodemailer.createTestAccount();
+            mailTransporter = nodemailer.createTransport({
+                host: testAccount.smtp.host,
+                port: testAccount.smtp.port,
+                secure: testAccount.smtp.secure,
+                auth: {
+                    user: testAccount.user,
+                    pass: testAccount.pass
+                }
+            });
+            emailTransportReady = true;
+            emailTransportDetails = `Ethereal (${testAccount.user})`;
+            console.log("No SMTP settings detected. Using Ethereal test account for email previews.");
+        } catch (error) {
+            console.error("Could not create Ethereal test account:", error);
+            emailTransportReady = false;
+        }
+    }
+}
+
+initializeMailTransporter();
+
+async function sendCustomerEmail(to, subject, html) {
+    if (!to) {
+        console.warn("No recipient email provided, skipping email send.");
+        return;
+    }
+    if (!emailTransportReady || !mailTransporter) {
+        console.warn("Email transport is not ready. Skipping email send.");
+        return;
+    }
+    try {
+        const info = await mailTransporter.sendMail({
+            from: process.env.EMAIL_FROM || "Bookshop <no-reply@bookshop.com>",
+            to,
+            subject,
+            html
+        });
+        console.log(`Email sent to ${to} (${subject}) - messageId=${info.messageId}`);
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) {
+            console.log(`Preview URL: ${previewUrl}`);
+        }
+    } catch (error) {
+        console.error("Email send error:", error);
+    }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -66,6 +147,13 @@ app.post("/api/signup", async (req, res) => {
                  ON DUPLICATE KEY UPDATE customer_name = VALUES(customer_name)`,
                 [fullname, email]
             );
+
+            const welcomeHtml = `
+                <h2>Welcome to Bookshop, ${fullname}!</h2>
+                <p>Your account has been created successfully.</p>
+                <p>Start shopping now and enjoy great book deals.</p>
+            `;
+            await sendCustomerEmail(email, 'Welcome to Bookshop', welcomeHtml);
         }
 
         res.status(201).json({ message: "Account created successfully." });
@@ -108,6 +196,13 @@ app.post("/api/login", async (req, res) => {
                 role: user.role
             }
         });
+
+        const loginEmailHtml = `
+            <h2>Welcome back, ${user.fullname || 'Bookshop Customer'}!</h2>
+            <p>You have successfully signed in to Bookshop Online Checkout System.</p>
+            <p>If this wasn't you, please contact support immediately.</p>
+        `;
+        sendCustomerEmail(user.email, 'Bookshop Login Notification', loginEmailHtml);
     } catch (error) {
         res.status(500).json({ message: "Could not log in." });
     }
@@ -560,7 +655,7 @@ app.post("/api/admin/salesDetails", async (req, res) => {
 app.post("/api/admin/checkout", async (req, res) => {
     const connection = await db.getConnection();
     try {
-        const { cart, sales_total_amount } = req.body;
+        const { cart, sales_total_amount, customer_info } = req.body;
 
         if (!Array.isArray(cart) || cart.length === 0) {
             return res.status(400).json({ message: "Cart is empty." });
@@ -569,6 +664,9 @@ app.post("/api/admin/checkout", async (req, res) => {
         if (sales_total_amount === undefined) {
             return res.status(400).json({ message: "Total amount is required." });
         }
+
+        const customerEmail = customer_info && customer_info.email ? customer_info.email : null;
+        const customerName = customer_info && customer_info.fullname ? customer_info.fullname : "Customer";
 
         await connection.beginTransaction();
 
@@ -615,6 +713,22 @@ app.post("/api/admin/checkout", async (req, res) => {
         }
 
         await connection.commit();
+
+        if (customerEmail) {
+            const itemsHtml = cart.map(item => `
+                <li>${item.title} × ${item.quantity} @ ₵${Number(item.price).toFixed(2)}</li>
+            `).join('');
+            const html = `
+                <h2>Thank you for your purchase, ${customerName}!</h2>
+                <p>Your order has been confirmed with order number <strong>#${sales_ID}</strong>.</p>
+                <p>Order total: <strong>₵${Number(sales_total_amount).toFixed(2)}</strong></p>
+                <p>Items:</p>
+                <ul>${itemsHtml}</ul>
+                <p>We will notify you once your order is shipped.</p>
+            `;
+            await sendCustomerEmail(customerEmail, 'Your Bookshop Order Confirmation', html);
+        }
+
         res.status(201).json({ message: "Checkout completed.", sales_ID });
     } catch (error) {
         await connection.rollback();
