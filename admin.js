@@ -122,6 +122,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const navItems = document.querySelectorAll(".nav-item[data-section]");
     const form = document.getElementById("record-form");
     const toggleFormBtn = document.getElementById("toggle-form-btn");
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmMessage = document.getElementById('confirm-modal-message');
+    const confirmOk = document.getElementById('confirm-ok');
+    const confirmCancel = document.getElementById('confirm-cancel');
 
     let activeSection = "staff";
     let editMode = false;
@@ -354,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
             tableBody.innerHTML = rows.map((row) => {
                 const values = Object.values(row);
                 const cells = values.map((cell) => `<td>${formatCell(cell)}</td>`).join("");
-                const actionCell = data.canEdit ? `<td><button class="action-btn edit-btn" type="button" data-id="${row[data.idField]}">Edit</button></td>` : "";
+                const actionCell = data.canEdit ? `<td><button class="action-btn edit-btn" type="button" data-id="${row[data.idField]}">Edit</button> <button class="action-btn remove-btn" type="button" data-id="${row[data.idField]}">Remove</button></td>` : "";
                 return `<tr>${cells}${actionCell}</tr>`;
             }).join("");
 
@@ -364,6 +368,44 @@ document.addEventListener("DOMContentLoaded", () => {
                         const id = btn.dataset.id;
                         const row = rows.find((r) => String(r[data.idField]) === String(id));
                         openEditForm(row);
+                    });
+                });
+                // Attach remove handlers
+                tableBody.querySelectorAll('.remove-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const id = btn.dataset.id;
+                        const endpoint = data.endpoint;
+                        // show modal
+                        confirmMessage.textContent = `Delete ${endpoint} record #${id}? This cannot be undone.`;
+                        confirmModal.classList.remove('hidden');
+
+                        const onCancel = () => {
+                            confirmModal.classList.add('hidden');
+                            confirmCancel.removeEventListener('click', onCancel);
+                            confirmOk.removeEventListener('click', onOk);
+                        };
+
+                        const onOk = async () => {
+                            confirmModal.classList.add('hidden');
+                            confirmCancel.removeEventListener('click', onCancel);
+                            confirmOk.removeEventListener('click', onOk);
+                            try {
+                                const url = `${API_BASE}/api/admin/${endpoint}/${id}`;
+                                const res = await fetch(url, { method: 'DELETE' });
+                                const result = await res.json();
+                                if (!res.ok) {
+                                    alert(result.message || 'Could not delete record.');
+                                    return;
+                                }
+                                await loadSection(activeSection);
+                                setTimeout(() => fetchStats(), 350);
+                            } catch (err) {
+                                alert('Could not delete record. Check that the backend server is running.');
+                            }
+                        };
+
+                        confirmCancel.addEventListener('click', onCancel);
+                        confirmOk.addEventListener('click', onOk);
                     });
                 });
             }

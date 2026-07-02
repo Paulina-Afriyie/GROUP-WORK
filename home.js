@@ -7,10 +7,10 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.href = "login.html";
     });
 
-    const goToSignup = () => {
-        window.location.href = "signup.html";
+    const goToLogin = () => {
+        window.location.href = "login.html";
     };
 
-    heroSigninBtn?.addEventListener("click", goToSignup);
-    navSigninBtn?.addEventListener("click", goToSignup);
+    heroSigninBtn?.addEventListener("click", goToLogin);
+    navSigninBtn?.addEventListener("click", goToLogin);
 });

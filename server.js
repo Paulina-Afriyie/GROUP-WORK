@@ -443,6 +443,67 @@ app.put("/api/admin/:section/:id", async (req, res) => {
     }
 });
 
+function isForeignKeyError(error) {
+    return error && (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451);
+}
+
+app.delete("/api/admin/:section/:id", async (req, res) => {
+    try {
+        const { section, id } = req.params;
+
+        switch (section) {
+            case 'category': {
+                await db.query('DELETE FROM category WHERE category_ID = ?', [id]);
+                return res.json({ message: 'Category deleted.' });
+            }
+            case 'suppliers': {
+                await db.query('DELETE FROM supplier WHERE supplier_ID = ?', [id]);
+                return res.json({ message: 'Supplier deleted.' });
+            }
+            case 'products': {
+                await db.query('DELETE FROM product WHERE product_ID = ?', [id]);
+                return res.json({ message: 'Product deleted.' });
+            }
+            case 'customers': {
+                await db.query('DELETE FROM customer WHERE customer_ID = ?', [id]);
+                return res.json({ message: 'Customer deleted.' });
+            }
+            case 'staff': {
+                const [[userRow]] = await db.query('SELECT staff_username FROM staff WHERE staff_ID = ?', [id]);
+                const staffUsername = userRow ? userRow.staff_username : null;
+                await db.query('DELETE FROM staff WHERE staff_ID = ?', [id]);
+                if (staffUsername) await db.query('DELETE FROM users WHERE email = ?', [staffUsername]);
+                return res.json({ message: 'Staff member deleted.' });
+            }
+            case 'sales': {
+                await db.query('DELETE FROM sales_details WHERE sales_ID = ?', [id]);
+                const [result] = await db.query('DELETE FROM sales WHERE sales_ID = ?', [id]);
+                if (result && result.affectedRows === 0) {
+                    return res.status(404).json({ message: 'Sale record not found.' });
+                }
+                return res.json({ message: 'Sale deleted.' });
+            }
+            case 'salesDetails': {
+                const [result] = await db.query('DELETE FROM sales_details WHERE sales_details_ID = ?', [id]);
+                if (result && result.affectedRows === 0) {
+                    return res.status(404).json({ message: 'Sale detail record not found.' });
+                }
+                return res.json({ message: 'Sale detail deleted.' });
+            }
+            default:
+                return res.status(404).json({ message: 'Delete not supported for this section.' });
+        }
+    } catch (error) {
+        console.error('Delete error', error);
+        if (isForeignKeyError(error)) {
+            return res.status(409).json({
+                message: 'Cannot delete this record because it is still referenced by other records. Remove dependent records first.'
+            });
+        }
+        res.status(500).json({ message: 'Could not delete record.' });
+    }
+});
+
 app.post("/api/admin/sales", async (req, res) => {
     try {
         const { sales_date, sales_total_amount, staff_ID, customer_ID } = req.body;
@@ -493,6 +554,74 @@ app.post("/api/admin/salesDetails", async (req, res) => {
         res.status(201).json({ message: "Sale detail added." });
     } catch (error) {
         res.status(500).json({ message: "Could not add sale detail." });
+    }
+});
+
+app.post("/api/admin/checkout", async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+        const { cart, sales_total_amount } = req.body;
+
+        if (!Array.isArray(cart) || cart.length === 0) {
+            return res.status(400).json({ message: "Cart is empty." });
+        }
+
+        if (sales_total_amount === undefined) {
+            return res.status(400).json({ message: "Total amount is required." });
+        }
+
+        await connection.beginTransaction();
+
+        const [saleResult] = await connection.query(
+            `INSERT INTO sales (sales_date, sales_total_amount, staff_ID, customer_ID)
+             VALUES (CURRENT_TIMESTAMP, ?, NULL, NULL)`,
+            [sales_total_amount]
+        );
+
+        const sales_ID = saleResult.insertId;
+        if (!sales_ID) {
+            await connection.rollback();
+            return res.status(500).json({ message: "Could not create sale record." });
+        }
+
+        for (const item of cart) {
+            const quantity = Number(item.quantity) || 0;
+            const price = Number(item.price) || 0;
+            if (!quantity || quantity <= 0) {
+                await connection.rollback();
+                return res.status(400).json({ message: "Sale items must have valid quantity." });
+            }
+            if (!item.id) {
+                await connection.rollback();
+                return res.status(400).json({ message: "Sale items must include a product ID." });
+            }
+
+            await connection.query(
+                `INSERT INTO sales_details (
+                    sales_ID,
+                    product_ID,
+                    sales_details_quantity,
+                    sales_details_price
+                ) VALUES (?, ?, ?, ?)`,
+                [sales_ID, item.id, quantity, price]
+            );
+
+            await connection.query(
+                `UPDATE product
+                 SET product_quantity_in_stock = GREATEST(product_quantity_in_stock - ?, 0)
+                 WHERE product_ID = ?`,
+                [quantity, item.id]
+            );
+        }
+
+        await connection.commit();
+        res.status(201).json({ message: "Checkout completed.", sales_ID });
+    } catch (error) {
+        await connection.rollback();
+        console.error("Checkout error:", error);
+        res.status(500).json({ message: "Checkout failed." });
+    } finally {
+        connection.release();
     }
 });
 

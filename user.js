@@ -64,6 +64,7 @@ let booksData = [
 let cart = [];
 let activeCategory = "all";
 let searchQuery = "";
+let apiAvailable = false;
 const LOW_STOCK_THRESHOLD = 3;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -80,12 +81,14 @@ async function loadBooks() {
         const response = await fetch(`${API_BASE}/api/books`);
 
         if (!response.ok) {
-            throw new Error("Book request failed");
+            throw new Error(`Book request failed: ${response.status}`);
         }
 
         booksData = await response.json();
+        apiAvailable = true;
     } catch (error) {
-        // Keep the sample books visible when the backend is not running yet.
+        apiAvailable = false;
+        console.warn('Could not load books from backend. Fallback sample books are shown.', error);
     }
 
     // ensure numeric stock property exists on fallback/sample entries
@@ -164,7 +167,7 @@ function renderBooks() {
         const left = document.createElement('div');
         const price = document.createElement('span');
         price.className = 'book-price';
-        price.textContent = `$${(Number(book.price) || 0).toFixed(2)}`;
+        price.textContent = `₵${(Number(book.price) || 0).toFixed(2)}`;
         left.appendChild(price);
 
         const stockDiv = document.createElement('div');
@@ -292,6 +295,9 @@ function changeQuantity(id, delta) {
 }
 
 function updateCartUI() {
+    // Remove any zero-quantity items before rendering or saving
+    cart = cart.filter((item) => Number(item.quantity) > 0);
+
     const count = cart.reduce((total, item) => total + item.quantity, 0);
     const container = document.getElementById("cart-items-container");
     const totalSpan = document.getElementById("cart-total");
@@ -301,6 +307,8 @@ function updateCartUI() {
     if (cart.length === 0) {
         container.innerHTML = '<p class="empty-msg">Your cart is empty.</p>';
         totalSpan.innerText = "0.00";
+        saveCart();
+        updateAddButtons();
         return;
     }
 
@@ -319,7 +327,7 @@ function updateCartUI() {
         left.appendChild(title);
         const price = document.createElement('small');
         price.className = 'text-muted';
-        price.textContent = `$${(Number(item.price) || 0).toFixed(2)}`;
+        price.textContent = `₵${(Number(item.price) || 0).toFixed(2)}`;
         left.appendChild(price);
 
         const right = document.createElement('div');
@@ -427,57 +435,7 @@ function setupCartUI() {
             return;
         }
 
-        (async () => {
-            // prepare sale payload
-            const totalPrice = cart.reduce((s, it) => s + it.price * it.quantity, 0);
-            try {
-                const saleRes = await fetch(`${API_BASE}/api/admin/sales`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sales_total_amount: totalPrice })
-                });
-
-                if (!saleRes.ok) throw new Error('Could not create sale');
-                const saleJson = await saleRes.json();
-                const sales_ID = saleJson.sales_ID;
-
-                // post sales details
-                const detailResponses = await Promise.all(cart.map(item => fetch(`${API_BASE}/api/admin/salesDetails`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sales_ID,
-                        product_ID: item.id,
-                        sales_details_quantity: item.quantity,
-                        sales_details_price: item.price
-                    })
-                })));
-                // ensure all detail posts succeeded
-                for (const r of detailResponses) {
-                    if (!r.ok) throw new Error('Failed to save sales detail');
-                }
-
-                // update local stocks and save purchase history
-                cart.forEach(ci => {
-                    const bk = booksData.find(b => Number(b.id) === Number(ci.id));
-                    if (bk) bk.stock = Math.max(0, (Number(bk.stock) || 0) - Number(ci.quantity));
-                });
-
-                const purchases = loadPurchases();
-                purchases.unshift({ id: sales_ID || Date.now(), date: new Date().toISOString(), items: cart.map(i => ({ id: i.id, title: i.title, qty: i.quantity, price: i.price })), total: totalPrice });
-                savePurchases(purchases);
-                renderPurchases();
-
-                cart = [];
-                updateCartUI();
-                renderBooks();
-                closeCart();
-                alert('Checkout complete. Thank you for your purchase.');
-            } catch (e) {
-                console.error('checkout error', e);
-                alert('Checkout failed. Try again later.');
-            }
-        })();
+        window.location.href = "checkout.html";
     });
 }
 
@@ -509,7 +467,7 @@ function renderPurchases() {
             ul.appendChild(li);
         });
         wrap.appendChild(ul);
-        wrap.insertAdjacentHTML('beforeend', `<div class="purchase-total">Total: $${p.total.toFixed(2)}</div>`);
+        wrap.insertAdjacentHTML('beforeend', `<div class="purchase-total">Total: ₵${p.total.toFixed(2)}</div>`);
         container.appendChild(wrap);
     });
 }

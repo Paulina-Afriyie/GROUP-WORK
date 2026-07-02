@@ -31,7 +31,7 @@
             <h1 id="page-title">Staff Management</h1>
             <div class="admin-profile">
                 <div class="admin-avatar">A</div>
-                <span style="font-weight: 600; font-size: 0.9rem;">Store Admin Matrix</span>
+                <span style="font-weight: 600; font-size: 0.9rem;">Mama Tee and papa Tee bookshop retails</span>
             </div>
         </header>
 
@@ -76,6 +76,19 @@
             </div>
         </section>
     </main>
+
+    <!-- Confirmation modal for deletes -->
+    <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <div class="modal-backdrop"></div>
+        <div class="modal-panel">
+            <h3 id="confirm-modal-title">Confirm Deletion</h3>
+            <p id="confirm-modal-message">Are you sure you want to delete this record? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="confirm-cancel" class="secondary-action-btn">Cancel</button>
+                <button id="confirm-ok" class="danger-action-btn">Delete</button>
+            </div>
+        </div>
+    </div>
 
     <script src="admin.js"></script>
 </body>
