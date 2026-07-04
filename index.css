@@ -326,7 +326,7 @@ body {
 
 /* Image style - UPDATED to perfectly fill container without distortion */
 .book-img {
-    width: 100%;
+    width: 200%;
     height: 100%;
     object-fit: cover; /* Standards ensure uniform presentation */
     object-position: center; /* Standard image alignment */

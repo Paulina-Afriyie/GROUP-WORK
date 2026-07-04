@@ -4,10 +4,32 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 const db = require("./src/db");
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const imageUploadDir = path.join(__dirname, "images");
+if (!fs.existsSync(imageUploadDir)) {
+    fs.mkdirSync(imageUploadDir, { recursive: true });
+}
+
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: imageUploadDir,
+        filename: (req, file, cb) => {
+            const safeName = file.originalname
+                .replace(/\s+/g, "-")
+                .replace(/[^a-zA-Z0-9._-]/g, "");
+            const extension = path.extname(safeName) || ".jpg";
+            const base = path.basename(safeName, extension);
+            cb(null, `${base}-${Date.now()}${extension}`);
+        }
+    })
+});
 
 const smtpConfigured = Boolean(
     process.env.EMAIL_HOST &&
@@ -92,6 +114,15 @@ async function sendCustomerEmail(to, subject, html) {
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+
+app.get("/api/version", (req, res) => {
+    res.json({
+        application: "bookshop",
+        version: "2.0",
+        supportsImageUpload: true,
+        supportsEmail: true
+    });
+});
 
 function emptyToNull(value) {
     return value === "" || value === undefined ? null : value;
@@ -315,8 +346,11 @@ app.post("/api/admin/suppliers", async (req, res) => {
     }
 });
 
-app.post("/api/admin/products", async (req, res) => {
+app.post("/api/admin/products", upload.single("product_image"), async (req, res) => {
     try {
+        console.log('POST /api/admin/products req.body:', req.body);
+        console.log('POST /api/admin/products req.file:', req.file);
+        const file = req.file;
         const {
             product_name,
             product_author,
@@ -331,7 +365,9 @@ app.post("/api/admin/products", async (req, res) => {
             return res.status(400).json({ message: "Product name and price are required." });
         }
 
-        await db.query(
+        const storedImagePath = file ? `images/${file.filename}` : product_image;
+
+        const [result] = await db.query(
             `INSERT INTO product (
                 product_name,
                 product_author,
@@ -348,12 +384,14 @@ app.post("/api/admin/products", async (req, res) => {
                 product_quantity_in_stock || 0,
                 emptyToNull(supplier_ID),
                 emptyToNull(category_ID),
-                emptyToNull(product_image)
+                emptyToNull(storedImagePath)
             ]
         );
 
-        res.status(201).json({ message: "Product added." });
+        const insertedId = result && result.insertId ? result.insertId : null;
+        res.status(201).json({ message: "Product added.", product_ID: insertedId, product_image: storedImagePath });
     } catch (error) {
+        console.error("Add product error:", error);
         res.status(500).json({ message: "Could not add product." });
     }
 });
@@ -419,7 +457,7 @@ app.post("/api/admin/staff", async (req, res) => {
     }
 });
 
-app.put("/api/admin/:section/:id", async (req, res) => {
+app.put("/api/admin/:section/:id", upload.single("product_image"), async (req, res) => {
     try {
         const { section, id } = req.params;
         const payload = req.body;
@@ -441,15 +479,11 @@ app.put("/api/admin/:section/:id", async (req, res) => {
                 return res.json({ message: 'Supplier updated.' });
             }
             case 'products': {
-                const {
-                    product_name,
-                    product_author,
-                    product_price,
-                    product_quantity_in_stock,
-                    supplier_ID,
-                    category_ID,
-                    product_image
-                } = payload;
+                console.log('PUT /api/admin/products/:id payload:', payload);
+                console.log('PUT /api/admin/products/:id file:', req.file);
+                const { product_name, product_author, product_price, product_quantity_in_stock, supplier_ID, category_ID, product_image } = payload;
+                const file = req.file;
+                const storedImagePath = file ? `images/${file.filename}` : product_image;
                 if (!product_name || product_price === undefined) return res.status(400).json({ message: 'Product name and price are required.' });
                 await db.query(
                     `UPDATE product SET
@@ -468,7 +502,7 @@ app.put("/api/admin/:section/:id", async (req, res) => {
                         product_quantity_in_stock || 0,
                         emptyToNull(supplier_ID),
                         emptyToNull(category_ID),
-                        emptyToNull(product_image),
+                        emptyToNull(storedImagePath),
                         id
                     ]
                 );

@@ -1,6 +1,37 @@
-const API_BASE = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+const API_BASE = (() => {
+    const origin = window.location.origin;
+    if (origin && origin !== 'null' && origin !== 'undefined') {
+        return origin;
+    }
+    return 'http://localhost:3001';
+})();
+
+function showAdminStatus(message, isError = false) {
+    let status = document.getElementById('admin-api-status');
+    if (!status) {
+        status = document.createElement('div');
+        status.id = 'admin-api-status';
+        status.style.padding = '10px 14px';
+        status.style.background = '#111827';
+        status.style.color = '#f8fafc';
+        status.style.fontSize = '0.9rem';
+        status.style.position = 'fixed';
+        status.style.right = '12px';
+        status.style.top = '12px';
+        status.style.zIndex = '9999';
+        status.style.borderRadius = '8px';
+        status.style.boxShadow = '0 4px 18px rgba(0,0,0,0.18)';
+        document.body.appendChild(status);
+    }
+    status.textContent = message;
+    status.style.background = isError ? '#b91c1c' : '#111827';
+}
+
+// NOTE: Removed automatic display of API base for security and cleanliness.
+// Use `showAdminStatus(message, isError)` manually in console for debugging when needed.
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Admin API base not shown automatically to avoid leaking internal endpoints.
     const dashboardData = {
         staff: {
             title: "Staff Management",
@@ -30,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 { name: "product_quantity_in_stock", label: "Quantity In Stock", type: "number", required: true },
                 { name: "supplier_ID", label: "Supplier ID", type: "number" },
                 { name: "category_ID", label: "Category ID", type: "number" },
-                { name: "product_image", label: "Image Path", type: "text", placeholder: "images/book.jpg" }
+                { name: "product_image", label: "Product Image", type: "file", accept: "image/*" }
             ]
         },
         category: {
@@ -160,6 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     name="${field.name}"
                     ${field.step ? `step="${field.step}"` : ""}
                     ${field.placeholder ? `placeholder="${field.placeholder}"` : ""}
+                    ${field.accept ? `accept="${field.accept}"` : ""}
                     ${field.required ? "required" : ""}
                 >
             </label>
@@ -317,7 +349,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         Object.entries(row).forEach(([key, value]) => {
             const input = form.querySelector(`[name="${key}"]`);
-            if (input) input.value = value === null ? "" : value;
+            if (!input || input.type === 'file') return;
+            input.value = value === null ? "" : value;
         });
         if (row.staff_username) {
             const original = form.querySelector('#original_staff_username');
@@ -335,11 +368,13 @@ document.addEventListener("DOMContentLoaded", () => {
         activeSection = sectionKey;
         pageTitle.innerText = data.title;
         tableTitle.innerText = data.tableTitle;
-        tableHeaders.innerHTML = data.headers.map((header) => `<th>${header}</th>`).join("");
+        // Compute headers to render (exclude 'Image' for products since images are hidden)
+        const headersToRender = data.headers.filter((h) => !(data.endpoint === 'products' && /image/i.test(h)));
+        tableHeaders.innerHTML = headersToRender.map((header) => `<th>${header}</th>`).join("");
         if (data.canEdit) {
             tableHeaders.innerHTML += `<th>Actions</th>`;
         }
-        tableBody.innerHTML = `<tr><td colspan="${data.headers.length + (data.canEdit ? 1 : 0)}">Loading records...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${headersToRender.length + (data.canEdit ? 1 : 0)}">Loading records...</td></tr>`;
         buildForm(sectionKey);
 
         try {
@@ -351,13 +386,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (rows.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="${data.headers.length + (data.canEdit ? 1 : 0)}">No records found.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="${headersToRender.length + (data.canEdit ? 1 : 0)}">No records found.</td></tr>`;
                 return;
             }
 
             tableBody.innerHTML = rows.map((row) => {
-                const values = Object.values(row);
-                const cells = values.map((cell) => `<td>${formatCell(cell)}</td>`).join("");
+                // Render each field; exclude `product_image` from table rows for products
+                let entriesToRender = Object.entries(row);
+                if (data.endpoint === 'products') {
+                    entriesToRender = entriesToRender.filter(([k]) => k !== 'product_image');
+                }
+                const cells = entriesToRender.map(([key, cell]) => `<td>${formatCell(cell)}</td>`).join("");
                 const actionCell = data.canEdit ? `<td><button class="action-btn edit-btn" type="button" data-id="${row[data.idField]}">Edit</button> <button class="action-btn remove-btn" type="button" data-id="${row[data.idField]}">Remove</button></td>` : "";
                 return `<tr>${cells}${actionCell}</tr>`;
             }).join("");
@@ -426,24 +465,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const data = dashboardData[activeSection];
         const formData = new FormData(form);
-        const payload = Object.fromEntries(formData.entries());
+        const productSection = data.endpoint === 'products';
+        const hasFileUpload = Array.from(formData.values()).some((value) =>
+            (typeof File !== 'undefined' && value instanceof File && value.size > 0) ||
+            (typeof Blob !== 'undefined' && value instanceof Blob && value.size > 0)
+        );
         const isUpdate = editMode && editRecordId;
         const url = isUpdate ? `${API_BASE}/api/admin/${data.endpoint}/${editRecordId}` : `${API_BASE}/api/admin/${data.endpoint}`;
         const method = isUpdate ? "PUT" : "POST";
 
         try {
-            const response = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+            const useFormData = productSection || hasFileUpload;
+            const entries = Array.from(formData.entries()).map(([key, value]) => {
+                if (value instanceof File) {
+                    return [key, value.name || value.type || "<file>"];
+                }
+                return [key, value];
             });
+            console.debug("Admin product submit", data.endpoint, entries);
+                // Ensure file input is explicitly attached for products (avoids edge cases)
+                if (productSection) {
+                    const fileInput = form.querySelector('input[type="file"][name="product_image"]');
+                    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                        formData.set('product_image', fileInput.files[0]);
+                        console.debug('Attached product_image file:', fileInput.files[0].name);
+                    }
+                }
+            const options = {
+                method,
+                body: useFormData ? formData : JSON.stringify(Object.fromEntries(formData.entries()))
+            };
+            if (!useFormData) {
+                options.headers = { "Content-Type": "application/json" };
+            }
 
+            console.log("Admin submitting to", url, "options:", options);
+            const response = await fetch(url, options);
             const result = await response.json();
 
             if (!response.ok) {
+                console.error('Save failed:', result.message || 'Unknown error');
                 alert(result.message || (isUpdate ? "Could not update record." : "Could not save record."));
                 return;
             }
+            console.log('Saved successfully to', url);
 
             editMode = false;
             editRecordId = null;
