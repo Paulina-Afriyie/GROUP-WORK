@@ -153,13 +153,16 @@ body {
 
 
 /* --- Global Variables & Resets --- */
-:root {
+body:not(.home-page) {
     --bg-dark: #f8fafc;
     --sidebar-bg: #ffffff;
     --primary-color: #4f46e5;
     --text-main: #1e293b;
     --text-muted: #64748b;
     --border-color: #e2e8f0;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow-x: hidden;
 }
 
 * {
@@ -167,12 +170,6 @@ body {
     padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', system-ui, sans-serif;
-}
-
-body {
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    overflow-x: hidden;
 }
 
 /* --- Layout Wrapper --- */

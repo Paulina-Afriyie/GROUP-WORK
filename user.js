@@ -68,7 +68,7 @@ let apiAvailable = false;
 const LOW_STOCK_THRESHOLD = 3;
 
 document.addEventListener("DOMContentLoaded", () => {
-    loadBooks();
+    loadBooks()
     loadCart();
     updateCartUI();
     setupCartUI();
