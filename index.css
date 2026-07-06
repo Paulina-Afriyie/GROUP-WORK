@@ -396,7 +396,7 @@ body:not(.home-page) {
     right: -400px; /* Hidden offscreen by default */
     width: 380px;
     height: 100vh;
-    background: white;
+    background: rgb(241, 239, 239);
     box-shadow: -4px 0 15px rgba(0,0,0,0.1);
     z-index: 100;
     transition: right 0.3s ease-in-out;
@@ -728,20 +728,54 @@ body:not(.home-page) {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: var(--bg-dark, #f8fafc);
     padding: 1.5rem;
     font-family: system-ui, -apple-system, sans-serif;
+    
 }
 
+
+
 .auth-card {
-    background: var(--sidebar-bg, #ffffff);
+    background: var(--sidebar-bg, #f1eeee);
     border: 1px solid var(--border-color, #e2e8f0);
     border-radius: 1rem;
     padding: 2.5rem;
     width: 100%;
     max-width: 430px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    
 }
+
+.login-body{
+    
+    margin: 0;
+    padding: 0;
+    height: 900px;
+    background: url("images/blur\ bac.png") no-repeat center center;
+    background-size: cover;
+    display: flex;
+    
+}
+
+.signup-body{
+     margin: 0;
+    padding: 0;
+    height: 900px;
+    background: url("images/blur\ bac.png") no-repeat center center;
+    background-size: cover;
+    display: flex;
+}
+
+.admin-body{
+     margin: 0;
+    padding: 0;
+    height: 900px;
+    background: url("images/blur\ bac.png") no-repeat center center;
+    background-size: cover;
+    display: flex;
+}
+
+
 
 .auth-header {
     text-align: center;
@@ -785,6 +819,7 @@ body:not(.home-page) {
 /* Forms & Inputs */
 .form-group {
     margin-bottom: 1.25rem;
+    
 }
 
 .form-group label {
