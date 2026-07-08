@@ -12,7 +12,7 @@ const db = require("./src/db");
 const app = express();
 const port = process.env.PORT || 3000;
 
-const imageUploadDir = path.join(__dirname, "images");
+const imageUploadDir = path.join(__dirname, "public", "images");
 if (!fs.existsSync(imageUploadDir)) {
     fs.mkdirSync(imageUploadDir, { recursive: true });
 }
@@ -113,7 +113,7 @@ async function sendCustomerEmail(to, subject, html) {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/version", (req, res) => {
     res.json({
@@ -704,10 +704,25 @@ app.post("/api/admin/checkout", async (req, res) => {
 
         await connection.beginTransaction();
 
+        let customerId = null;
+        if (customerEmail) {
+            // Check if customer exists, or insert them if they don't
+            await connection.query(
+                `INSERT INTO customer (customer_name, customer_email)
+                 VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE customer_name = COALESCE(customer.customer_name, VALUES(customer_name))`,
+                [customerName, customerEmail]
+            );
+            const [custRows] = await connection.query("SELECT customer_ID FROM customer WHERE customer_email = ? LIMIT 1", [customerEmail]);
+            if (custRows.length > 0) {
+                customerId = custRows[0].customer_ID;
+            }
+        }
+
         const [saleResult] = await connection.query(
             `INSERT INTO sales (sales_date, sales_total_amount, staff_ID, customer_ID)
-             VALUES (CURRENT_TIMESTAMP, ?, NULL, NULL)`,
-            [sales_total_amount]
+             VALUES (CURRENT_TIMESTAMP, ?, NULL, ?)`,
+            [sales_total_amount, customerId]
         );
 
         const sales_ID = saleResult.insertId;
@@ -770,6 +785,212 @@ app.post("/api/admin/checkout", async (req, res) => {
         res.status(500).json({ message: "Checkout failed." });
     } finally {
         connection.release();
+    }
+});
+
+// --- Customer API Endpoints ---
+
+// GET /api/customer/orders?email=... — fetch order history for a user
+app.get("/api/customer/orders", async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ message: "Email is required." });
+
+        const [customers] = await db.query(
+            "SELECT customer_ID FROM customer WHERE customer_email = ? LIMIT 1",
+            [email]
+        );
+
+        if (!customers.length) {
+            return res.json([]); // no orders for this customer
+        }
+
+        const customerId = customers[0].customer_ID;
+
+        const [sales] = await db.query(
+            `SELECT sales_ID AS id, sales_date AS date, sales_total_amount AS total
+             FROM sales WHERE customer_ID = ? ORDER BY sales_date DESC`,
+            [customerId]
+        );
+
+        // Fetch items for each sale
+        const orders = await Promise.all(sales.map(async (sale) => {
+            const [items] = await db.query(
+                `SELECT sd.sales_details_quantity AS quantity, sd.sales_details_price AS price,
+                        p.product_name AS title
+                 FROM sales_details sd
+                 LEFT JOIN product p ON sd.product_ID = p.product_ID
+                 WHERE sd.sales_ID = ?`,
+                [sale.id]
+            );
+            return { ...sale, items };
+        }));
+
+        res.json(orders);
+    } catch (error) {
+        console.error("Customer orders error:", error);
+        res.status(500).json({ message: "Could not load orders." });
+    }
+});
+
+// PUT /api/customer/profile — update user name and email
+app.put("/api/customer/profile", async (req, res) => {
+    try {
+        const { oldEmail, fullname, email } = req.body;
+        if (!oldEmail || !fullname || !email) {
+            return res.status(400).json({ message: "oldEmail, fullname, and email are required." });
+        }
+
+        await db.query(
+            "UPDATE users SET fullname = ?, email = ? WHERE email = ? AND role = 'user'",
+            [fullname, email, oldEmail]
+        );
+
+        // Keep customer table in sync
+        await db.query(
+            "UPDATE customer SET customer_name = ?, customer_email = ? WHERE customer_email = ?",
+            [fullname, email, oldEmail]
+        );
+
+        res.json({ message: "Profile updated." });
+    } catch (error) {
+        console.error("Profile update error:", error);
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({ message: "That email is already in use." });
+        }
+        res.status(500).json({ message: "Could not update profile." });
+    }
+});
+
+// PUT /api/customer/change-password — change user password
+app.put("/api/customer/change-password", async (req, res) => {
+    try {
+        const { email, currentPassword, newPassword } = req.body;
+        if (!email || !currentPassword || !newPassword) {
+            return res.status(400).json({ message: "email, currentPassword, and newPassword are required." });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: "New password must be at least 6 characters." });
+        }
+
+        const [users] = await db.query(
+            "SELECT id, password_hash FROM users WHERE email = ? AND role = 'user' LIMIT 1",
+            [email]
+        );
+        if (!users.length) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const user = users[0];
+        const matches = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!matches) {
+            return res.status(401).json({ message: "Current password is incorrect." });
+        }
+
+        const newHash = await bcrypt.hash(newPassword, 10);
+        await db.query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, user.id]);
+
+        res.json({ message: "Password changed successfully." });
+    } catch (error) {
+        console.error("Change password error:", error);
+        res.status(500).json({ message: "Could not change password." });
+    }
+});
+
+// --- Report API Endpoints ---
+
+app.get("/api/admin/reports/daily-sales", async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                DATE_FORMAT(sales_date, '%Y-%m-%d') AS date, 
+                COUNT(sales_ID) AS total_orders, 
+                SUM(sales_total_amount) AS total_sales
+            FROM sales
+            GROUP BY DATE_FORMAT(sales_date, '%Y-%m-%d')
+            ORDER BY date DESC
+        `);
+        res.json(rows);
+    } catch (error) {
+        console.error("Daily sales report error:", error);
+        res.status(500).json({ message: "Could not generate daily sales report." });
+    }
+});
+
+app.get("/api/admin/reports/monthly-sales", async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                DATE_FORMAT(sales_date, '%Y-%m') AS month, 
+                COUNT(sales_ID) AS total_orders, 
+                SUM(sales_total_amount) AS total_sales
+            FROM sales
+            GROUP BY DATE_FORMAT(sales_date, '%Y-%m')
+            ORDER BY month DESC
+        `);
+        res.json(rows);
+    } catch (error) {
+        console.error("Monthly sales report error:", error);
+        res.status(500).json({ message: "Could not generate monthly sales report." });
+    }
+});
+
+app.get("/api/admin/reports/stock-levels", async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                p.product_ID AS id, 
+                p.product_name AS name, 
+                p.product_quantity_in_stock AS stock, 
+                p.product_price AS price,
+                COALESCE(c.category_name, 'No Category') AS category,
+                COALESCE(s.supplier_name, 'No Supplier') AS supplier
+            FROM product p
+            LEFT JOIN category c ON p.category_ID = c.category_ID
+            LEFT JOIN supplier s ON p.supplier_ID = s.supplier_ID
+            ORDER BY p.product_quantity_in_stock ASC
+        `);
+        res.json(rows);
+    } catch (error) {
+        console.error("Stock levels report error:", error);
+        res.status(500).json({ message: "Could not generate stock levels report." });
+    }
+});
+
+app.get("/api/admin/reports/supplier-products", async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                s.supplier_name AS supplier,
+                p.product_name AS product,
+                p.product_quantity_in_stock AS stock,
+                p.product_price AS price
+            FROM supplier s
+            LEFT JOIN product p ON s.supplier_ID = p.supplier_ID
+            ORDER BY s.supplier_name ASC, p.product_name ASC
+        `);
+        res.json(rows);
+    } catch (error) {
+        console.error("Supplier products report error:", error);
+        res.status(500).json({ message: "Could not generate supplier products report." });
+    }
+});
+
+app.get("/api/admin/reports/customers-per-day", async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                DATE_FORMAT(sales_date, '%Y-%m-%d') AS date,
+                COUNT(DISTINCT customer_ID) AS unique_customers,
+                COUNT(sales_ID) AS total_checkouts
+            FROM sales
+            GROUP BY DATE_FORMAT(sales_date, '%Y-%m-%d')
+            ORDER BY date DESC
+        `);
+        res.json(rows);
+    } catch (error) {
+        console.error("Customers per day report error:", error);
+        res.status(500).json({ message: "Could not generate customers per day report." });
     }
 });
 

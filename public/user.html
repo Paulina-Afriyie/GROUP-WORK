@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookStream - User Dashboard</title>
+    <meta name="description" content="BookStream user dashboard – browse books, track orders, manage your profile.">
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+
+        <aside class="sidebar">
+            <div class="back">
+                <a href="home.html">Back home<span class="arrow">&rarr;</span></a>
+            </div>
+            <div class="logo">
+                <h2>📚 <p>Papa Tee and Mama Tee</p> BookStream</h2>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" id="nav-dashboard" class="active">🏠 Dashboard</a>
+                <a href="#" id="nav-orders">📖 My Orders</a>
+                <a href="#" id="nav-profile">📊 Profile</a>
+                <a href="#" id="nav-settings">⚙️ Settings</a>
+            </nav>
+
+            <!-- Logout button pushed to bottom of sidebar -->
+            <div class="sidebar-footer">
+                <button id="nav-logout" class="logout-btn">🚪 Log Out</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-wrapper" id="search-wrapper">
+                    <input type="text" id="search-input" placeholder="Search by title, author...">
+                </div>
+                <div class="user-actions">
+                    <button id="cart-toggle-btn" class="cart-btn">
+                        🛒 Cart (<span id="cart-count">0</span>)
+                    </button>
+                    <div class="avatar" id="user-avatar" title="View Profile" style="cursor: pointer;">👤</div>
+                </div>
+            </header>
+
+            <!-- ===== Dashboard View ===== -->
+            <div id="dashboard-view">
+                <section class="categories-section">
+                    <h3>Categories</h3>
+                    <div class="category-list" id="category-tags">
+                        <button class="category-chip active" data-category="all">All Books</button>
+                        <button class="category-chip" data-category="fiction">Fiction</button>
+                        <button class="category-chip" data-category="Text books">Text Books</button>
+                        <button class="category-chip" data-category="Past-quetions">Past Questions</button>
+                        <button class="category-chip" data-category="Writing books">Writing Books</button>
+                    </div>
+                </section>
+
+                <section class="books-section">
+                    <h3>Explore Books</h3>
+                    <div class="books-grid" id="books-grid"></div>
+                </section>
+            </div>
+
+            <!-- ===== My Orders View ===== -->
+            <div id="orders-view" class="view-section" style="display: none;">
+                <section class="orders-section">
+                    <div class="view-header">
+                        <h3>📖 My Orders</h3>
+                        <p class="view-subtitle">Your complete order history</p>
+                    </div>
+                    <div id="main-orders-list" class="orders-list">
+                        <p class="text-muted">Loading your orders...</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== Profile View ===== -->
+            <div id="profile-view" class="view-section" style="display: none;">
+                <section class="profile-section">
+                    <div class="view-header">
+                        <h3>📊 My Profile</h3>
+                        <p class="view-subtitle">Update your personal information</p>
+                    </div>
+                    <form id="profile-form" class="dashboard-form">
+                        <div class="form-group">
+                            <label for="profile-name">Full Name</label>
+                            <input type="text" id="profile-name" placeholder="Enter your full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-email">Email Address</label>
+                            <input type="email" id="profile-email" placeholder="Enter your email" required>
+                        </div>
+                        <div id="profile-message" class="form-message" style="display:none;"></div>
+                        <button type="submit" class="btn-primary-custom">💾 Update Profile</button>
+                    </form>
+                </section>
+            </div>
+
+            <!-- ===== Settings View ===== -->
+            <div id="settings-view" class="view-section" style="display: none;">
+                <section class="settings-section">
+                    <div class="view-header">
+                        <h3>⚙️ Account Settings</h3>
+                        <p class="view-subtitle">Manage your account security</p>
+                    </div>
+                    <form id="settings-password-form" class="dashboard-form">
+                        <h4 style="margin-bottom: 1.25rem; color: var(--primary-color);">Change Password</h4>
+                        <div class="form-group">
+                            <label for="current-password">Current Password</label>
+                            <input type="password" id="current-password" placeholder="Enter current password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" placeholder="Enter new password (min. 6 characters)" required minlength="6">
+                        </div>
+                        <div id="settings-message" class="form-message" style="display:none;"></div>
+                        <button type="submit" class="btn-primary-custom">🔒 Update Password</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+
+        <!-- Cart Drawer -->
+        <div class="cart-drawer" id="cart-drawer">
+            <div class="cart-header">
+                <h3>Your Shopping Cart</h3>
+                <button id="close-cart-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="cart-items" id="cart-items-container">
+                <p class="empty-msg">Your cart is empty.</p>
+            </div>
+            <div class="purchase-history" id="purchase-history">
+                <h4>Your Purchases</h4>
+                <div id="purchases-list">
+                    <p class="text-muted">No purchases yet.</p>
+                </div>
+            </div>
+            <div class="cart-footer">
+                <div class="total-price">Total: ₵<span id="cart-total">0.00</span></div>
+                <button class="checkout-btn" id="checkout-btn">Proceed to Checkout</button>
+            </div>
+        </div>
+        <div class="overlay" id="overlay"></div>
+    </div>
+
+    <script src="user.js"></script>
+</body>
+
+</html>

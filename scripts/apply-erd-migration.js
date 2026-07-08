@@ -5,7 +5,7 @@ const path = require("path");
 const mysql = require("mysql2/promise");
 
 async function applyMigration() {
-    const sql = fs.readFileSync(path.join(__dirname, "erd-migration.sql"), "utf8");
+    const sql = fs.readFileSync(path.join(__dirname, "../database/erd-migration.sql"), "utf8");
 
     const connection = await mysql.createConnection({
         host: process.env.DB_HOST || "localhost",

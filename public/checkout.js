@@ -181,17 +181,49 @@ function setupForm() {
                 throw new Error(err.message || 'Checkout failed.');
             }
 
+            const result = await response.json().catch(() => ({}));
+
             lastOrder = {
                 items: cart.map((item) => ({ ...item })),
                 total: totalPrice
             };
+
+            // Persist to localStorage so "My Orders" view shows this order
+            saveOrderToHistory(lastOrder, result.sales_ID);
+
             clearCart();
             renderCheckoutItems();
             showSuccess();
         } catch (error) {
+            // Fallback: save locally even if server failed, so the user's order history is preserved
+            if (cart.length > 0) {
+                const fallbackOrder = { items: cart.map(item => ({ ...item })), total: totalPrice };
+                saveOrderToHistory(fallbackOrder, null);
+            }
             alert(error.message || 'Could not complete checkout. Please try again.');
         }
     });
+}
+
+function saveOrderToHistory(order, serverId) {
+    try {
+        const raw = localStorage.getItem('bookshop_purchases');
+        const list = raw ? JSON.parse(raw) : [];
+        const newEntry = {
+            id: serverId || `local-${Date.now()}`,
+            date: new Date().toISOString(),
+            total: order.total,
+            items: (order.items || []).map(it => ({
+                title: it.title || it.product_name || 'Book',
+                qty: it.quantity || 1,
+                price: Number(it.price) || 0
+            }))
+        };
+        list.unshift(newEntry); // newest first
+        localStorage.setItem('bookshop_purchases', JSON.stringify(list));
+    } catch (e) {
+        // ignore storage errors
+    }
 }
 
 window.addEventListener('DOMContentLoaded', () => {

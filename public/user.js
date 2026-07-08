@@ -67,13 +67,53 @@ let searchQuery = "";
 let apiAvailable = false;
 const LOW_STOCK_THRESHOLD = 3;
 
+// =============================================
+// SESSION HELPERS — defined early so auth guard can use them
+// =============================================
+function getCurrentUser() {
+    try {
+        const raw = localStorage.getItem('currentUser');
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+}
+
+function setCurrentUser(userData) {
+    try { localStorage.setItem('currentUser', JSON.stringify(userData)); } catch (e) {}
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
-    loadBooks()
+    // Auth guard: redirect to login if no session
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        // Show a friendly redirect instead of a silent loop
+        document.body.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;
+                        background:#f8fafc;font-family:'Segoe UI',sans-serif;gap:1rem;text-align:center;padding:2rem;">
+                <span style="font-size:3rem;">📚</span>
+                <h2 style="color:#1e293b;margin:0;">Please log in to access your dashboard</h2>
+                <p style="color:#64748b;margin:0;">You need to sign in before you can view your dashboard.</p>
+                <a href="login.html" style="background:#4f46e5;color:#fff;padding:0.75rem 2rem;border-radius:0.6rem;
+                   text-decoration:none;font-weight:600;margin-top:0.5rem;">Go to Login →</a>
+            </div>`;
+        setTimeout(() => { window.location.href = "login.html"; }, 2500);
+        return;
+    }
+
+    // Display user avatar initials
+    const avatarEl = document.getElementById("user-avatar");
+    if (avatarEl && currentUser.fullname) {
+        avatarEl.textContent = currentUser.fullname.charAt(0).toUpperCase();
+        avatarEl.title = `Logged in as ${currentUser.fullname}`;
+    }
+
+    loadBooks();
     loadCart();
     updateCartUI();
     setupCartUI();
     setupFilters();
     renderPurchases();
+    setupNavigation();
 });
 
 async function loadBooks() {
@@ -474,4 +514,269 @@ function renderPurchases() {
         wrap.insertAdjacentHTML('beforeend', `<div class="purchase-total">Total: ₵${p.total.toFixed(2)}</div>`);
         container.appendChild(wrap);
     });
+}
+
+
+// =============================================
+// NAVIGATION ROUTER
+// =============================================
+function setupNavigation() {
+    const navDashboard = document.getElementById('nav-dashboard');
+    const navOrders    = document.getElementById('nav-orders');
+    const navProfile   = document.getElementById('nav-profile');
+    const navSettings  = document.getElementById('nav-settings');
+    const navLogout    = document.getElementById('nav-logout');
+    const userAvatar   = document.getElementById('user-avatar');
+
+    if (navDashboard) navDashboard.addEventListener('click', (e) => { e.preventDefault(); showView('dashboard'); });
+    if (navOrders)    navOrders.addEventListener('click',    (e) => { e.preventDefault(); showView('orders'); });
+    if (navProfile)   navProfile.addEventListener('click',   (e) => { e.preventDefault(); showView('profile'); });
+    if (navSettings)  navSettings.addEventListener('click',  (e) => { e.preventDefault(); showView('settings'); });
+    if (navLogout)    navLogout.addEventListener('click',    (e) => { e.preventDefault(); handleLogout(); });
+    if (userAvatar)   userAvatar.addEventListener('click',   ()  => showView('profile'));
+
+    // Also set up profile and settings form listeners once
+    setupProfile();
+    setupSettings();
+}
+
+function showView(view) {
+    // Hide all views
+    const views = ['dashboard', 'orders', 'profile', 'settings'];
+    views.forEach(v => {
+        const el = document.getElementById(`${v}-view`);
+        if (el) el.style.display = 'none';
+    });
+
+    // Remove active from all nav links
+    document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
+
+    // Show the selected view and mark nav as active
+    const targetView = document.getElementById(`${view}-view`);
+    if (targetView) targetView.style.display = '';
+
+    const navLink = document.getElementById(`nav-${view}`);
+    if (navLink) navLink.classList.add('active');
+
+    // Show/hide search bar (only on dashboard)
+    const searchWrapper = document.getElementById('search-wrapper');
+    if (searchWrapper) searchWrapper.style.display = view === 'dashboard' ? '' : 'none';
+
+    // Load data for the requested view
+    if (view === 'orders') loadOrders();
+    if (view === 'profile') populateProfileForm();
+}
+
+// =============================================
+// LOGOUT
+// =============================================
+function handleLogout() {
+    if (!confirm('Are you sure you want to log out?')) return;
+    localStorage.removeItem('currentUser');
+    window.location.href = 'login.html';
+}
+
+// =============================================
+// MY ORDERS
+// =============================================
+async function loadOrders() {
+    const container = document.getElementById('main-orders-list');
+    if (!container) return;
+    container.innerHTML = '<p class="text-muted">Loading your orders...</p>';
+
+    const currentUser = getCurrentUser();
+    const email = currentUser ? currentUser.email : null;
+
+    // Try API first
+    if (email) {
+        try {
+            const resp = await fetch(`${API_BASE}/api/customer/orders?email=${encodeURIComponent(email)}`);
+            if (resp.ok) {
+                const orders = await resp.json();
+                renderOrders(container, orders);
+                return;
+            }
+        } catch (err) {
+            // fall through to localStorage
+        }
+    }
+
+    // Fallback: use bookshop_purchases from localStorage
+    const localOrders = loadPurchases();
+    if (!localOrders.length) {
+        container.innerHTML = `
+            <div class="no-orders-msg">
+                <span class="no-orders-icon">📦</span>
+                <p>You have not placed any orders yet.</p>
+                <p style="margin-top:0.5rem; font-size:0.85rem;">Browse books and add them to your cart!</p>
+            </div>`;
+        return;
+    }
+
+    // Map localStorage purchase format to common format
+    const mappedOrders = localOrders.map((p, idx) => ({
+        id: p.id || (idx + 1),
+        date: p.date,
+        total: p.total,
+        items: (p.items || []).map(it => ({
+            title: it.title,
+            quantity: it.qty,
+            price: it.price
+        }))
+    }));
+    renderOrders(container, mappedOrders);
+}
+
+function renderOrders(container, orders) {
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `
+            <div class="no-orders-msg">
+                <span class="no-orders-icon">📦</span>
+                <p>You have not placed any orders yet.</p>
+                <p style="margin-top:0.5rem; font-size:0.85rem;">Browse books and add them to your cart!</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    orders.forEach(order => {
+        const card = document.createElement('div');
+        card.className = 'order-card';
+
+        const date = order.date ? new Date(order.date).toLocaleString() : 'Unknown date';
+        const total = Number(order.total || order.sales_total_amount || 0).toFixed(2);
+
+        const itemsHtml = Array.isArray(order.items) && order.items.length
+            ? order.items.map(it => {
+                const qty = it.quantity || it.qty || 1;
+                const price = Number(it.price || it.sales_details_price || 0).toFixed(2);
+                const name = it.title || it.product_name || 'Book';
+                return `<li>${name} &times; ${qty} @ ₵${price}</li>`;
+            }).join('')
+            : '<li>Order details not available</li>';
+
+        card.innerHTML = `
+            <div class="order-card-header">
+                <strong>Order #${order.id || order.sales_ID}</strong>
+                <span class="order-date">${date}</span>
+            </div>
+            <ul class="order-items-list">${itemsHtml}</ul>
+            <div class="order-total">Total: ₵${total}</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// =============================================
+// PROFILE
+// =============================================
+function populateProfileForm() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    const nameField  = document.getElementById('profile-name');
+    const emailField = document.getElementById('profile-email');
+    if (nameField)  nameField.value  = currentUser.fullname || '';
+    if (emailField) emailField.value = currentUser.email    || '';
+}
+
+function setupProfile() {
+    const form = document.getElementById('profile-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msgEl = document.getElementById('profile-message');
+        const currentUser = getCurrentUser();
+        const fullname = document.getElementById('profile-name').value.trim();
+        const email    = document.getElementById('profile-email').value.trim();
+
+        if (!fullname || !email) {
+            showFormMsg(msgEl, 'Please fill in all fields.', 'error');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/customer/profile`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldEmail: currentUser ? currentUser.email : email, fullname, email })
+            });
+            if (resp.ok) {
+                setCurrentUser({ ...currentUser, fullname, email });
+                showFormMsg(msgEl, '✅ Profile updated successfully!', 'success');
+                const avatarEl = document.getElementById('user-avatar');
+                if (avatarEl) avatarEl.textContent = fullname.charAt(0).toUpperCase();
+            } else {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.message || 'Update failed.');
+            }
+        } catch (err) {
+            // Offline fallback: update localStorage only
+            if (currentUser) {
+                setCurrentUser({ ...currentUser, fullname, email });
+                showFormMsg(msgEl, '✅ Profile saved locally (server unavailable).', 'success');
+                const avatarEl = document.getElementById('user-avatar');
+                if (avatarEl) avatarEl.textContent = fullname.charAt(0).toUpperCase();
+            } else {
+                showFormMsg(msgEl, err.message || 'Could not update profile.', 'error');
+            }
+        }
+    });
+}
+
+// =============================================
+// SETTINGS – CHANGE PASSWORD
+// =============================================
+function setupSettings() {
+    const form = document.getElementById('settings-password-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msgEl = document.getElementById('settings-message');
+        const currentUser = getCurrentUser();
+        const currentPwd = document.getElementById('current-password').value;
+        const newPwd     = document.getElementById('new-password').value;
+
+        if (!currentPwd || !newPwd) {
+            showFormMsg(msgEl, 'Please fill in both password fields.', 'error');
+            return;
+        }
+        if (newPwd.length < 6) {
+            showFormMsg(msgEl, 'New password must be at least 6 characters.', 'error');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/customer/change-password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: currentUser ? currentUser.email : '',
+                    currentPassword: currentPwd,
+                    newPassword: newPwd
+                })
+            });
+            if (resp.ok) {
+                showFormMsg(msgEl, '✅ Password changed successfully!', 'success');
+                form.reset();
+            } else {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.message || 'Could not change password.');
+            }
+        } catch (err) {
+            showFormMsg(msgEl, err.message || 'Server unavailable. Password not changed.', 'error');
+        }
+    });
+}
+
+// =============================================
+// UTILITY
+// =============================================
+function showFormMsg(el, text, type) {
+    if (!el) return;
+    el.textContent = text;
+    el.className = `form-message ${type}`;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4500);
 }

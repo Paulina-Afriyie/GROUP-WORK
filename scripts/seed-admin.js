@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const bcrypt = require("bcryptjs");
-const db = require("./src/db");
+const db = require("../src/db");
 
 async function seedAdmin() {
     const email = process.env.ADMIN_EMAIL || "admin@bookshop.com";

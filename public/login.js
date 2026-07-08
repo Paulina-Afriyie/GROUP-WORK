@@ -33,7 +33,12 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("currentUser", JSON.stringify(result.user));
             window.location.href = "user.html";
         } catch (error) {
-            alert("Start the backend server to use database login. Demo redirect is being used for now.");
+            // Demo mode: server not running — create a local session with the entered email
+            const demoName = email.split("@")[0]
+                .replace(/[._-]/g, " ")
+                .replace(/\b\w/g, c => c.toUpperCase());
+            const demoUser = { id: "demo", fullname: demoName, email: email, role: "user" };
+            localStorage.setItem("currentUser", JSON.stringify(demoUser));
             window.location.href = "user.html";
         }
     });

@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const db = require("./src/db");
+const db = require("../src/db");
 
 async function testConnection() {
     try {

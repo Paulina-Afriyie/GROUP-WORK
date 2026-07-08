@@ -143,8 +143,122 @@ document.addEventListener("DOMContentLoaded", () => {
                 { name: "sales_details_quantity", label: "Quantity", type: "number", required: true },
                 { name: "sales_details_price", label: "Price", type: "number", step: "0.01", required: true }
             ]
+        },
+        reports: {
+            title: "System Reports",
+            tableTitle: "Report Preview Data",
+            headers: [],
+            endpoint: "reports",
+            fields: []
         }
     };
+
+    const reportConfigs = {
+        "daily-sales": {
+            headers: ["Date", "Total Orders", "Total Revenue (₵)"],
+            mapper: (row) => [
+                row.date,
+                row.total_orders,
+                `₵${Number(row.total_sales || 0).toFixed(2)}`
+            ]
+        },
+        "monthly-sales": {
+            headers: ["Month", "Total Orders", "Total Revenue (₵)"],
+            mapper: (row) => [
+                row.month,
+                row.total_orders,
+                `₵${Number(row.total_sales || 0).toFixed(2)}`
+            ]
+        },
+        "stock-levels": {
+            headers: ["Product ID", "Book Title", "Stock Level", "Price (₵)", "Category", "Supplier"],
+            mapper: (row) => [
+                row.id,
+                row.name,
+                row.stock,
+                `₵${Number(row.price || 0).toFixed(2)}`,
+                row.category,
+                row.supplier
+            ]
+        },
+        "supplier-products": {
+            headers: ["Supplier Name", "Product Name", "Quantity Left", "Price (₵)"],
+            mapper: (row) => [
+                row.supplier,
+                row.product || "No Product",
+                row.stock !== null ? row.stock : "-",
+                row.price !== null ? `₵${Number(row.price || 0).toFixed(2)}` : "-"
+            ]
+        },
+        "customers-per-day": {
+            headers: ["Date", "Registered Customers Served", "Total Checkouts"],
+            mapper: (row) => [
+                row.date,
+                row.unique_customers,
+                row.total_checkouts
+            ]
+        }
+    };
+
+    function exportTableToCSV(filename) {
+        const table = document.getElementById("data-table");
+        if (!table) return;
+        
+        let csv = [];
+        const rows = table.querySelectorAll("tr");
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = [], cols = rows[i].querySelectorAll("td, th");
+            
+            for (let j = 0; j < cols.length; j++) {
+                let data = cols[j].innerText.trim();
+                data = data.replace(/"/g, '""');
+                if (data.indexOf(",") >= 0 || data.indexOf("\n") >= 0 || data.indexOf('"') >= 0) {
+                    data = '"' + data + '"';
+                }
+                row.push(data);
+            }
+            
+            csv.push(row.join(","));
+        }
+
+        const csvFile = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+
+    async function loadReport(reportType) {
+        const config = reportConfigs[reportType];
+        if (!config) return;
+
+        tableHeaders.innerHTML = config.headers.map(h => `<th>${h}</th>`).join("");
+        tableBody.innerHTML = `<tr><td colspan="${config.headers.length}">Loading report details...</td></tr>`;
+
+        try {
+            const response = await fetch(`${API_BASE}/api/admin/reports/${reportType}`);
+            if (!response.ok) {
+                throw new Error("Failed to load report from server.");
+            }
+            const rows = await response.json();
+
+            if (rows.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="${config.headers.length}">No data found for this report.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = rows.map(row => {
+                const cells = config.mapper(row).map(val => `<td>${formatCell(val)}</td>`).join("");
+                return `<tr>${cells}</tr>`;
+            }).join("");
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="${config.headers.length}">${error.message}</td></tr>`;
+        }
+    }
 
     const pageTitle = document.getElementById("page-title");
     const tableTitle = document.getElementById("table-title");
@@ -359,6 +473,70 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadSection(sectionKey) {
+        // If reports toolbar exists, hide it by default
+        const reportsToolbar = document.getElementById("reports-toolbar");
+        if (reportsToolbar) reportsToolbar.style.display = "none";
+
+        if (sectionKey === "reports") {
+            activeSection = "reports";
+            pageTitle.innerText = "System Reports";
+            tableTitle.innerText = "Report Preview Data";
+            toggleFormBtn.classList.add("hidden");
+            form.classList.add("hidden");
+            
+            // Set up toolbar
+            let selectEl = document.getElementById("report-type-select");
+            let toolbar = document.getElementById("reports-toolbar");
+            if (!toolbar) {
+                toolbar = document.createElement("div");
+                toolbar.id = "reports-toolbar";
+                toolbar.style.display = "flex";
+                toolbar.style.justify = "space-between";
+                toolbar.style.gap = "1rem";
+                toolbar.style.alignItems = "center";
+                toolbar.style.marginBottom = "1.5rem";
+                toolbar.style.flexWrap = "wrap";
+                toolbar.style.background = "#f8fafc";
+                toolbar.style.padding = "1rem";
+                toolbar.style.borderRadius = "0.5rem";
+                toolbar.style.border = "1px solid var(--border-color)";
+                
+                toolbar.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-muted);">Select Report:</span>
+                        <select id="report-type-select" style="padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid var(--border-color); font-size: 0.9rem; background: white; font-weight: 600; outline: none; cursor: pointer;">
+                            <option value="daily-sales">Daily Sales Report (Daily)</option>
+                            <option value="monthly-sales">Monthly Sales Report (Monthly)</option>
+                            <option value="stock-levels">Stock Level Report (Weekly)</option>
+                            <option value="supplier-products">Supplier Product Report (Daily)</option>
+                            <option value="customers-per-day">Customers Served per Day (Daily)</option>
+                        </select>
+                    </div>
+                    <button class="primary-action-btn" id="export-csv-btn" type="button" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                        <span>📥 Export to CSV</span>
+                    </button>
+                `;
+                
+                // Insert it after the section header
+                const dataSection = document.querySelector(".data-section");
+                const sectionHeader = document.querySelector(".section-header");
+                dataSection.insertBefore(toolbar, sectionHeader.nextSibling);
+                
+                selectEl = toolbar.querySelector("#report-type-select");
+                selectEl.addEventListener("change", () => loadReport(selectEl.value));
+                
+                toolbar.querySelector("#export-csv-btn").addEventListener("click", () => {
+                    const activeReport = selectEl.value;
+                    exportTableToCSV(`${activeReport}-report.csv`);
+                });
+            } else {
+                toolbar.style.display = "flex";
+            }
+            
+            loadReport(selectEl.value);
+            return;
+        }
+
         const data = dashboardData[sectionKey];
         if (!data) return;
 
