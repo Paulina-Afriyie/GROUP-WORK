@@ -1,12 +1,34 @@
 const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
 const CUSTOMER_INFO_KEY = 'bookshop_checkout_info';
 
+/** Get the email-scoped localStorage key for purchases. Mirrors user.js getPurchasesKey(). */
+function getPurchasesKey() {
+    try {
+        const raw = localStorage.getItem('currentUser');
+        const user = raw ? JSON.parse(raw) : null;
+        const email = user && user.email ? user.email.toLowerCase().trim() : 'guest';
+        return `bookshop_purchases_${email}`;
+    } catch (e) { return 'bookshop_purchases_guest'; }
+}
+
+/** Get the email-scoped localStorage key for the cart. Mirrors user.js getCartKey(). */
+function getCartKey() {
+    try {
+        const raw = localStorage.getItem('currentUser');
+        const user = raw ? JSON.parse(raw) : null;
+        const email = user && user.email ? user.email.toLowerCase().trim() : 'guest';
+        return `bookshop_cart_${email}`;
+    } catch (e) { return 'bookshop_cart_guest'; }
+}
+
 let cart = [];
 let lastOrder = null;
 
 function loadCart() {
     try {
-        const raw = localStorage.getItem('bookshop_cart');
+        // Try user-specific cart key first, then fall back to legacy shared key
+        const raw = localStorage.getItem(getCartKey())
+                 || localStorage.getItem('bookshop_cart');
         cart = raw ? JSON.parse(raw) : [];
     } catch (error) {
         cart = [];
@@ -44,15 +66,34 @@ function saveCustomerInfo() {
 
 function loadCustomerInfo() {
     try {
+        const form = document.getElementById('checkout-form');
+        if (!form) return;
+
+        // 1. Prefill fullname and email from logged-in session if available
+        const rawUser = localStorage.getItem('currentUser');
+        if (rawUser) {
+            const user = JSON.parse(rawUser);
+            if (user && typeof user === 'object') {
+                const nameField = form.elements.namedItem('fullname');
+                if (nameField && !nameField.value) {
+                    nameField.value = user.fullname || '';
+                }
+                const emailField = form.elements.namedItem('email');
+                if (emailField && !emailField.value) {
+                    emailField.value = user.email || '';
+                }
+            }
+        }
+
+        // 2. Override/merge with stored checkout form details (address, mobile provider, etc.)
         const raw = localStorage.getItem(CUSTOMER_INFO_KEY);
         if (!raw) return;
         const info = JSON.parse(raw);
-        const form = document.getElementById('checkout-form');
-        if (!form || typeof info !== 'object' || info === null) return;
+        if (typeof info !== 'object' || info === null) return;
 
         Object.entries(info).forEach(([key, value]) => {
             const field = form.elements.namedItem(key);
-            if (field) {
+            if (field && value) {
                 field.value = value;
             }
         });
@@ -109,7 +150,9 @@ function renderCheckoutItems() {
 
 function clearCart() {
     cart = [];
-    localStorage.setItem('bookshop_cart', JSON.stringify(cart));
+    // Clear both the user-specific key and the legacy shared key
+    try { localStorage.removeItem(getCartKey()); } catch (e) {}
+    try { localStorage.removeItem('bookshop_cart'); } catch (e) {}
 }
 
 function showSuccess() {
@@ -165,6 +208,9 @@ function setupForm() {
             return;
         }
 
+        const submitBtn = form.querySelector('[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Processing…'; }
+
         const totalPrice = cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
         const formData = new FormData(form);
         const payload = Object.fromEntries(formData.entries());
@@ -176,12 +222,12 @@ function setupForm() {
                 body: JSON.stringify({ cart, sales_total_amount: totalPrice, customer_info: payload })
             });
 
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.message || 'Checkout failed.');
-            }
-
+            // Parse body ONCE — it's a one-read stream
             const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Checkout failed.');
+            }
 
             lastOrder = {
                 items: cart.map((item) => ({ ...item })),
@@ -195,11 +241,12 @@ function setupForm() {
             renderCheckoutItems();
             showSuccess();
         } catch (error) {
-            // Fallback: save locally even if server failed, so the user's order history is preserved
+            // Fallback: save locally even if server failed
             if (cart.length > 0) {
                 const fallbackOrder = { items: cart.map(item => ({ ...item })), total: totalPrice };
                 saveOrderToHistory(fallbackOrder, null);
             }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Place Order'; }
             alert(error.message || 'Could not complete checkout. Please try again.');
         }
     });
@@ -207,7 +254,8 @@ function setupForm() {
 
 function saveOrderToHistory(order, serverId) {
     try {
-        const raw = localStorage.getItem('bookshop_purchases');
+        const key = getPurchasesKey();
+        const raw = localStorage.getItem(key);
         const list = raw ? JSON.parse(raw) : [];
         const newEntry = {
             id: serverId || `local-${Date.now()}`,
@@ -220,7 +268,7 @@ function saveOrderToHistory(order, serverId) {
             }))
         };
         list.unshift(newEntry); // newest first
-        localStorage.setItem('bookshop_purchases', JSON.stringify(list));
+        localStorage.setItem(key, JSON.stringify(list));
     } catch (e) {
         // ignore storage errors
     }

@@ -81,6 +81,19 @@ function setCurrentUser(userData) {
     try { localStorage.setItem('currentUser', JSON.stringify(userData)); } catch (e) {}
 }
 
+/** Returns a localStorage key scoped to the current user's email. */
+function getPurchasesKey() {
+    const user = getCurrentUser();
+    const email = user && user.email ? user.email.toLowerCase().trim() : 'guest';
+    return `bookshop_purchases_${email}`;
+}
+
+/** Returns a localStorage key for the cart scoped to the current user's email. */
+function getCartKey() {
+    const user = getCurrentUser();
+    const email = user && user.email ? user.email.toLowerCase().trim() : 'guest';
+    return `bookshop_cart_${email}`;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     // Auth guard: redirect to login if no session
@@ -101,19 +114,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Display user avatar initials
-    const avatarEl = document.getElementById("user-avatar");
-    if (avatarEl && currentUser.fullname) {
-        avatarEl.textContent = currentUser.fullname.charAt(0).toUpperCase();
-        avatarEl.title = `Logged in as ${currentUser.fullname}`;
+    try {
+        const avatarEl = document.getElementById("user-avatar");
+        if (avatarEl && currentUser.fullname) {
+            avatarEl.textContent = currentUser.fullname.charAt(0).toUpperCase();
+            avatarEl.title = `Logged in as ${currentUser.fullname}`;
+        }
+    } catch (err) {
+        console.error("Error setting avatar:", err);
     }
 
-    loadBooks();
-    loadCart();
-    updateCartUI();
-    setupCartUI();
-    setupFilters();
-    renderPurchases();
-    setupNavigation();
+    try { loadBooks(); } catch (err) { console.error("Error loading books:", err); }
+    try { loadCart(); } catch (err) { console.error("Error loading cart:", err); }
+    try { updateCartUI(); } catch (err) { console.error("Error updating cart UI:", err); }
+    try { setupCartUI(); } catch (err) { console.error("Error setting up cart UI:", err); }
+    try { setupFilters(); } catch (err) { console.error("Error setting up filters:", err); }
+    try { renderPurchases(); } catch (err) { console.error("Error rendering purchases:", err); }
+    try { setupNavigation(); } catch (err) { console.error("Error setting up navigation:", err); }
 });
 
 async function loadBooks() {
@@ -146,8 +163,11 @@ function reconcileCartWithStock() {
     cart.forEach(item => {
         const bk = booksData.find(b => Number(b.id) === Number(item.id));
         if (bk) {
-            const available = Number(bk.stock) || 0;
-            if (item.quantity > available) {
+            const available = Number(bk.stock);
+            // Only reduce quantity if available stock is a meaningful positive number
+            // and the cart exceeds it. Don't zero-out items just because DB returned 0
+            // (stock may be stale or the book just sold out during this session).
+            if (available > 0 && item.quantity > available) {
                 item.quantity = available;
                 changed = true;
             }
@@ -323,10 +343,15 @@ function changeQuantity(id, delta) {
         removeFromCart(id);
         return;
     }
-    const available = book ? Number(book.stock) || 0 : 0;
-    if (newQty > available) {
-        alert('Cannot increase — exceeds available stock.');
-        item.quantity = available;
+    // Only enforce stock limit when increasing quantity
+    if (delta > 0) {
+        const available = book ? Number(book.stock) || 0 : 999;
+        if (newQty > available) {
+            alert('Cannot add more — reached available stock.');
+            item.quantity = available;
+        } else {
+            item.quantity = newQty;
+        }
     } else {
         item.quantity = newQty;
     }
@@ -338,11 +363,15 @@ function updateCartUI() {
     // Remove any zero-quantity items before rendering or saving
     cart = cart.filter((item) => Number(item.quantity) > 0);
 
-    const count = cart.reduce((total, item) => total + item.quantity, 0);
+    const count = cart.reduce((total, item) => total + (Number(item.quantity) || 0), 0);
     const container = document.getElementById("cart-items-container");
-    const totalSpan = document.getElementById("cart-total");
+    const totalSpan  = document.getElementById("cart-total");
+    const countEl   = document.getElementById("cart-count");
 
-    document.getElementById("cart-count").innerText = count;
+    // Guard: elements may not exist if auth guard replaced the page body
+    if (!container || !totalSpan || !countEl) return;
+
+    countEl.innerText = count;
 
     if (cart.length === 0) {
         container.innerHTML = '<p class="empty-msg">Your cart is empty.</p>';
@@ -363,14 +392,18 @@ function updateCartUI() {
 
         const left = document.createElement('div');
         const title = document.createElement('h5');
-        title.textContent = item.title || '';
+        title.textContent = item.title || 'Unknown Book';
         left.appendChild(title);
-        const price = document.createElement('small');
-        price.className = 'text-muted';
-        price.textContent = `₵${(Number(item.price) || 0).toFixed(2)}`;
-        left.appendChild(price);
+        const priceEl = document.createElement('small');
+        priceEl.className = 'text-muted';
+        priceEl.textContent = `₵${(Number(item.price) || 0).toFixed(2)}`;
+        left.appendChild(priceEl);
 
         const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.alignItems = 'center';
+        right.style.gap = '0.5rem';
+
         const qtyControl = document.createElement('div');
         qtyControl.className = 'qty-control';
         qtyControl.setAttribute('role', 'group');
@@ -381,7 +414,7 @@ function updateCartUI() {
         dec.dataset.id = String(item.id);
         dec.setAttribute('aria-label', 'Decrease quantity');
         dec.textContent = '-';
-        dec.addEventListener('click', (e) => { e.preventDefault(); changeQuantity(item.id, -1); });
+        dec.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changeQuantity(item.id, -1); });
 
         const num = document.createElement('span');
         num.className = 'qty-number';
@@ -392,7 +425,7 @@ function updateCartUI() {
         inc.dataset.id = String(item.id);
         inc.setAttribute('aria-label', 'Increase quantity');
         inc.textContent = '+';
-        inc.addEventListener('click', (e) => { e.preventDefault(); changeQuantity(item.id, 1); });
+        inc.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changeQuantity(item.id, 1); });
 
         qtyControl.appendChild(dec);
         qtyControl.appendChild(num);
@@ -403,7 +436,7 @@ function updateCartUI() {
         closeBtn.type = 'button';
         closeBtn.style.fontSize = '1.15rem';
         closeBtn.innerText = '×';
-        closeBtn.addEventListener('click', () => removeFromCart(item.id));
+        closeBtn.addEventListener('click', (e) => { e.stopPropagation(); removeFromCart(item.id); });
 
         right.appendChild(qtyControl);
         right.appendChild(closeBtn);
@@ -421,7 +454,7 @@ function updateCartUI() {
 
 function saveCart() {
     try {
-        localStorage.setItem('bookshop_cart', JSON.stringify(cart));
+        localStorage.setItem(getCartKey(), JSON.stringify(cart));
     } catch (e) {
         // ignore localStorage errors
     }
@@ -429,8 +462,15 @@ function saveCart() {
 
 function loadCart() {
     try {
-        const raw = localStorage.getItem('bookshop_cart');
-        if (raw) cart = JSON.parse(raw);
+        // Load from user-specific key first, fall back to legacy shared key
+        const raw = localStorage.getItem(getCartKey())
+                 || localStorage.getItem('bookshop_cart');
+        if (raw) {
+            cart = JSON.parse(raw);
+            // Migrate: move data to the user-specific key and remove legacy
+            saveCart();
+            localStorage.removeItem('bookshop_cart');
+        }
     } catch (e) {
         cart = [];
     }
@@ -484,34 +524,47 @@ function setupCartUI() {
 }
 
 function savePurchases(list) {
-    try { localStorage.setItem('bookshop_purchases', JSON.stringify(list)); } catch (e) {}
+    try { localStorage.setItem(getPurchasesKey(), JSON.stringify(list)); } catch (e) {}
 }
 
 function loadPurchases() {
-    try { const raw = localStorage.getItem('bookshop_purchases'); return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
+    try {
+        const raw = localStorage.getItem(getPurchasesKey());
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
 }
 
 function renderPurchases() {
     const container = document.getElementById('purchases-list');
     if (!container) return;
     const list = loadPurchases();
-    if (!list.length) {
+    if (!Array.isArray(list) || !list.length) {
         container.innerHTML = '<p class="text-muted">No purchases yet.</p>';
         return;
     }
     container.innerHTML = '';
     list.forEach(p => {
+        if (!p) return;
+        const dateStr = p.date ? new Date(p.date).toLocaleString() : 'Unknown Date';
+        const totalVal = Number(p.total || 0).toFixed(2);
+
         const wrap = document.createElement('div');
         wrap.className = 'purchase';
-        wrap.innerHTML = `<div class="purchase-meta"><strong>Order #${p.id}</strong> <small class="text-muted">${new Date(p.date).toLocaleString()}</small></div>`;
+        wrap.innerHTML = `<div class="purchase-meta"><strong>Order #${p.id || 'N/A'}</strong> <small class="text-muted">${dateStr}</small></div>`;
+
         const ul = document.createElement('ul');
-        p.items.forEach(it => {
+        const items = Array.isArray(p.items) ? p.items : [];
+        items.forEach(it => {
+            const priceVal = Number(it.price || 0).toFixed(2);
+            const qtyVal = Number(it.qty || it.quantity || 1);
+            const titleVal = it.title || 'Book';
+
             const li = document.createElement('li');
-            li.textContent = `${it.title} — ${it.qty} × $${it.price.toFixed(2)}`;
+            li.textContent = `${titleVal} — ${qtyVal} × ₵${priceVal}`;
             ul.appendChild(li);
         });
         wrap.appendChild(ul);
-        wrap.insertAdjacentHTML('beforeend', `<div class="purchase-total">Total: ₵${p.total.toFixed(2)}</div>`);
+        wrap.insertAdjacentHTML('beforeend', `<div class="purchase-total">Total: ₵${totalVal}</div>`);
         container.appendChild(wrap);
     });
 }
@@ -572,7 +625,11 @@ function showView(view) {
 // =============================================
 function handleLogout() {
     if (!confirm('Are you sure you want to log out?')) return;
+    // Clear session — purchases stay under the user-specific key for when they log back in
     localStorage.removeItem('currentUser');
+    // Clear only the generic shared cart (not user-specific carts)
+    localStorage.removeItem('bookshop_cart');
+    localStorage.removeItem('bookshop_checkout_info');
     window.location.href = 'login.html';
 }
 
@@ -603,7 +660,7 @@ async function loadOrders() {
 
     // Fallback: use bookshop_purchases from localStorage
     const localOrders = loadPurchases();
-    if (!localOrders.length) {
+    if (!Array.isArray(localOrders) || !localOrders.length) {
         container.innerHTML = `
             <div class="no-orders-msg">
                 <span class="no-orders-icon">📦</span>
@@ -614,21 +671,28 @@ async function loadOrders() {
     }
 
     // Map localStorage purchase format to common format
-    const mappedOrders = localOrders.map((p, idx) => ({
-        id: p.id || (idx + 1),
-        date: p.date,
-        total: p.total,
-        items: (p.items || []).map(it => ({
-            title: it.title,
-            quantity: it.qty,
-            price: it.price
-        }))
-    }));
+    const mappedOrders = localOrders.map((p, idx) => {
+        if (!p) return null;
+        return {
+            id: p.id || (idx + 1),
+            date: p.date,
+            total: p.total,
+            items: (Array.isArray(p.items) ? p.items : []).map(it => {
+                if (!it) return null;
+                return {
+                    title: it.title || 'Book',
+                    quantity: it.qty || it.quantity || 1,
+                    price: it.price || 0
+                };
+            }).filter(Boolean)
+        };
+    }).filter(Boolean);
+
     renderOrders(container, mappedOrders);
 }
 
 function renderOrders(container, orders) {
-    if (!orders || orders.length === 0) {
+    if (!Array.isArray(orders) || orders.length === 0) {
         container.innerHTML = `
             <div class="no-orders-msg">
                 <span class="no-orders-icon">📦</span>
@@ -640,6 +704,7 @@ function renderOrders(container, orders) {
 
     container.innerHTML = '';
     orders.forEach(order => {
+        if (!order) return;
         const card = document.createElement('div');
         card.className = 'order-card';
 
@@ -648,6 +713,7 @@ function renderOrders(container, orders) {
 
         const itemsHtml = Array.isArray(order.items) && order.items.length
             ? order.items.map(it => {
+                if (!it) return '';
                 const qty = it.quantity || it.qty || 1;
                 const price = Number(it.price || it.sales_details_price || 0).toFixed(2);
                 const name = it.title || it.product_name || 'Book';
@@ -657,7 +723,7 @@ function renderOrders(container, orders) {
 
         card.innerHTML = `
             <div class="order-card-header">
-                <strong>Order #${order.id || order.sales_ID}</strong>
+                <strong>Order #${order.id || order.sales_ID || 'N/A'}</strong>
                 <span class="order-date">${date}</span>
             </div>
             <ul class="order-items-list">${itemsHtml}</ul>

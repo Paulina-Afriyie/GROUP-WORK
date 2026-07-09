@@ -428,16 +428,32 @@ body:not(.home-page) {
     height: 100vh;
     background: rgb(241, 239, 239);
     box-shadow: -4px 0 15px rgba(0,0,0,0.1);
-    z-index: 100;
+    z-index: 200;
     transition: right 0.3s ease-in-out;
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
+    overflow-y: auto;
 }
 
 .cart-drawer.open {
     right: 0;
 }
+
+/* Dark overlay backdrop behind the cart drawer */
+.overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 150;
+    transition: opacity 0.3s ease;
+}
+
+.overlay.open {
+    display: block;
+}
+
 
 .cart-header {
     display: flex;
