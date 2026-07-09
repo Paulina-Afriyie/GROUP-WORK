@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const avatarEl = document.getElementById("user-avatar");
         if (avatarEl && currentUser.fullname) {
             avatarEl.textContent = currentUser.fullname.charAt(0).toUpperCase();
-            avatarEl.title = `Logged in as ${currentUser.fullname}`;
+            avatarEl.title = `Logged in as ${currentUser.fullnodename}`;
         }
     } catch (err) {
         console.error("Error setting avatar:", err);
