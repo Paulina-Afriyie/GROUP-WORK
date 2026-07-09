@@ -231,7 +231,7 @@ app.post("/api/login", async (req, res) => {
         const loginEmailHtml = `
             <h2>Welcome back, ${user.fullname || 'Bookshop Customer'}!</h2>
             <p>You have successfully signed in to Bookshop Online Checkout System.</p>
-            <p>If this wasn't you, please contact support immediately.</p>
+            <p>If this wasn't you, please contact support immediately 0594954194. </p>
         `;
         sendCustomerEmail(user.email, 'Bookshop Login Notification', loginEmailHtml);
     } catch (error) {
