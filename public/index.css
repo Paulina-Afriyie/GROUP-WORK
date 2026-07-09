@@ -277,11 +277,11 @@ body:not(.home-page) {
 }
 
 .avatar{
-    background-color: blue;
-    border-radius: 60%;
+    background-color: rgb(27, 27, 235);
+    border-radius: 55%;
     color: white;
     padding: 0.5rem 1em;  
-    font-weight: light; 
+    font-weight: bold; 
 }
 
 .cart-btn {
