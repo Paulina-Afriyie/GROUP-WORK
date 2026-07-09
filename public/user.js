@@ -67,9 +67,7 @@ let searchQuery = "";
 let apiAvailable = false;
 const LOW_STOCK_THRESHOLD = 3;
 
-// =============================================
-// SESSION HELPERS — defined early so auth guard can use them
-// =============================================
+
 function getCurrentUser() {
     try {
         const raw = localStorage.getItem('currentUser');

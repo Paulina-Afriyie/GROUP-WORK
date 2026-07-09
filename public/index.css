@@ -1,4 +1,4 @@
-/* --- Global Reset & Variables --- */
+
 * {
     margin: 0;
     padding: 0;
@@ -66,7 +66,7 @@ body {
     margin: 0 auto;
 }
 
-/* Announcement Badge */
+
 .badge {
     background-color: var(--badge-bg);
     border: 1px solid rgba(59, 130, 246, 0.2);
@@ -79,7 +79,7 @@ body {
     gap: 0.5rem;
 }
 
-/* Typography */
+
 .hero-title {
     font-size: 4rem;
     font-weight: 700;
@@ -100,7 +100,7 @@ body {
     margin-bottom: 3rem;
 }
 
-/* --- Buttons & UI Elements --- */
+
 .cta-group {
     display: flex;
     gap: 1rem;
@@ -152,7 +152,7 @@ body {
 
 
 
-/* --- Global Variables & Resets --- */
+
 body:not(.home-page) {
     --bg-dark: #f8fafc;
     --sidebar-bg: #ffffff;
@@ -172,7 +172,7 @@ body:not(.home-page) {
     font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
-/* --- Layout Wrapper --- */
+
 .dashboard-container {
     display: flex;
     min-height: 100vh;
@@ -240,7 +240,7 @@ body:not(.home-page) {
     color: var(--primary-color);
 }
 
-/* --- Main Dashboard Area --- */
+
 .main-content {
     flex: 1;
     padding: 2rem;
@@ -249,7 +249,7 @@ body:not(.home-page) {
     width: 100%;
 }
 
-/* Top Bar Styling */
+
 .top-bar {
     display: flex;
     justify-content: space-between;
@@ -276,6 +276,14 @@ body:not(.home-page) {
     gap: 1.5rem;
 }
 
+.avatar{
+    background-color: blue;
+    border-radius: 60%;
+    color: white;
+    padding: 0.5rem 1em;  
+    font-weight: light; 
+}
+
 .cart-btn {
     background: var(--primary-color);
     color: white;
@@ -286,7 +294,7 @@ body:not(.home-page) {
     font-weight: 600;
 }
 
-/* Category Chips */
+
 .categories-section h3, .books-section h3 {
     margin-bottom: 1rem;
     font-size: 1.2rem;
@@ -313,12 +321,12 @@ body:not(.home-page) {
     border-color: var(--primary-color);
 }
 
-/* Books Product Grid - UPDATED with standard CSS Grid */
+
 .books-grid {
     display: grid;
-    /* Grid items will be standardized; ensures multiple rows form naturally */
+    
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 2rem; /* Increased gap for better negative space */
+    gap: 2rem; 
 }
 
 .book-card {
@@ -338,25 +346,25 @@ body:not(.home-page) {
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-/* Image container - UPDATED for standardized layout */
+
 .book-cover {
     background: #e2e8f0;
-    /* Fixed height ensures uniform containers; standard book aspect ratio roughly 2:3 */
+    
     height: 280px; 
     border-radius: 0.5rem;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden; /* Standardizes image presentation */
+    overflow: hidden; 
 }
 
-/* Image style - UPDATED to perfectly fill container without distortion */
+
 .book-img {
     width: 200%;
     height: 100%;
-    object-fit: cover; /* Standards ensure uniform presentation */
-    object-position: center; /* Standard image alignment */
+    object-fit: cover; 
+    object-position: center; 
 }
 
 .book-title {
@@ -364,9 +372,9 @@ body:not(.home-page) {
     font-weight: 600;
     margin-bottom: 0.25rem;
     color: var(--text-main);
-    /* Allow text wrapping; standardized height ensures alignment */
+    
     height: auto; 
-    margin-top: auto; /* Standard spacing from image */
+    margin-top: auto; 
 }
 
 .book-author {
@@ -379,7 +387,7 @@ body:not(.home-page) {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: auto; /* Ensures button is always at the bottom */
+    margin-top: auto; 
 }
 
 .book-price {
@@ -419,14 +427,14 @@ body:not(.home-page) {
     border-color: rgba(220,38,38,0.08);
 }
 
-/* --- Sliding Cart Drawer --- */
+
 .cart-drawer {
     position: fixed;
     top: 0;
-    right: -400px; /* Hidden offscreen by default */
+    right: -400px; 
     width: 380px;
     height: 100vh;
-    background: rgb(241, 239, 239);
+    background: rgb(252, 251, 251);
     box-shadow: -4px 0 15px rgba(0,0,0,0.1);
     z-index: 200;
     transition: right 0.3s ease-in-out;
@@ -440,7 +448,7 @@ body:not(.home-page) {
     right: 0;
 }
 
-/* Dark overlay backdrop behind the cart drawer */
+
 .overlay {
     display: none;
     position: fixed;
@@ -834,7 +842,7 @@ body:not(.home-page) {
     margin-bottom: 0.5rem;
 }
 
-/* Role Toggler Tabs */
+
 .role-tabs {
     display: flex;
     background: #f1f5f9;
@@ -862,7 +870,7 @@ body:not(.home-page) {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Forms & Inputs */
+
 .form-group {
     margin-bottom: 1.25rem;
     
@@ -907,7 +915,7 @@ body:not(.home-page) {
     accent-color: var(--primary-color, #4f46e5);
 }
 
-/* Buttons & Footer links */
+
 .auth-submit-btn {
     width: 100%;
     background: var(--primary-color, #4f46e5);
@@ -1105,9 +1113,7 @@ body:not(.home-page) {
     }
 }
 
-/* =============================================
-   DASHBOARD VIEW SECTIONS (Orders, Profile, Settings)
-   ============================================= */
+
 
 .view-section {
     animation: fadeInView 0.3s ease;
@@ -1134,7 +1140,7 @@ body:not(.home-page) {
     font-size: 0.92rem;
 }
 
-/* ---- Dashboard Forms (Profile & Settings) ---- */
+
 .dashboard-form {
     background: #fff;
     border: 1px solid var(--border-color);
