@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("currentUser", JSON.stringify(result.user));
             window.location.href = "user.html";
         } catch (error) {
-            // Demo mode: server not running — create a local session with the entered email
+           
             const demoName = email.split("@")[0]
                 .replace(/[._-]/g, " ")
                 .replace(/\b\w/g, c => c.toUpperCase());

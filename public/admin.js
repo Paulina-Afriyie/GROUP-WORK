@@ -27,16 +27,14 @@ function showAdminStatus(message, isError = false) {
     status.style.background = isError ? '#b91c1c' : '#111827';
 }
 
-// NOTE: Removed automatic display of API base for security and cleanliness.
-// Use `showAdminStatus(message, isError)` manually in console for debugging when needed.
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Admin API base not shown automatically to avoid leaking internal endpoints.
+    
     const dashboardData = {
         staff: {
             title: "Staff Management",
             tableTitle: "Active Personnel Registry",
-            headers: ["Staff ID", "Staff Name", "Staff Username", "Staff Role"],
+            headers: ["Staff ID", "Staff Name","Staff Username", "Staff Role",],
             endpoint: "staff",
             idField: "staff_ID",
             canEdit: true,
@@ -103,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]
         },
         customers: {
-            title: "Customer/User Database",
+            title: "Customer",
             tableTitle: "Registered Customers",
             headers: ["Customer ID", "Customer Name", "Address", "Phone Number", "Email"],
             endpoint: "customers",
@@ -514,7 +512,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                     <button class="primary-action-btn" id="export-csv-btn" type="button" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
                         <span>📥 Export to CSV</span>
-                    </button>
+                        
+                    
                 `;
                 
                 // Insert it after the section header
