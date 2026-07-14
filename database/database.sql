@@ -55,11 +55,15 @@ CREATE TABLE IF NOT EXISTS sales (
     sales_ID INT AUTO_INCREMENT PRIMARY KEY,
     sales_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     sales_total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    order_status VARCHAR(30) NOT NULL DEFAULT 'Pending',
     staff_ID INT,
     customer_ID INT,
     FOREIGN KEY (staff_ID) REFERENCES staff(staff_ID),
     FOREIGN KEY (customer_ID) REFERENCES customer(customer_ID)
 );
+
+ALTER TABLE sales
+    ADD COLUMN IF NOT EXISTS order_status VARCHAR(30) NOT NULL DEFAULT 'Pending' AFTER sales_total_amount;
 
 CREATE TABLE IF NOT EXISTS sales_details (
     sales_details_ID INT AUTO_INCREMENT PRIMARY KEY,

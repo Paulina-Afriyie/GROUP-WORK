@@ -200,6 +200,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.unique_customers,
                 row.total_checkouts
             ]
+        },
+        "customer-orders": {
+            title: "Customer Order Report",
+            headers: ["Order ID", "Date", "Customer", "Email", "Books Ordered", "Total (₵)", "Status"],
+            mapper: (row) => [
+                row.order_id,
+                row.order_date,
+                row.customer_name,
+                row.customer_email,
+                row.books_ordered || "No books recorded",
+                `₵${Number(row.total_amount || 0).toFixed(2)}`,
+                row.status || "Pending"
+            ]
         }
     };
 
@@ -529,6 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <option value="stock-levels">Stock Level Report (Weekly)</option>
                             <option value="supplier-products">Supplier Product Report (Daily)</option>
                             <option value="customers-per-day">Customers Served per Day (Daily)</option>
+                            <option value="customer-orders">Customer Order Report</option>
                         </select>
                     </div>
                     <div class="report-actions">

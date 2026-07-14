@@ -5,7 +5,8 @@ const endpoints = [
     "/api/admin/reports/monthly-sales",
     "/api/admin/reports/stock-levels",
     "/api/admin/reports/supplier-products",
-    "/api/admin/reports/customers-per-day"
+    "/api/admin/reports/customers-per-day",
+    "/api/admin/reports/customer-orders"
 ];
 
 function testEndpoint(path) {

@@ -990,6 +990,59 @@ app.get("/api/admin/reports/customers-per-day", async (req, res) => {
     }
 });
 
+app.get("/api/admin/reports/customer-orders", async (req, res) => {
+    try {
+        const [columns] = await db.query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'sales'
+              AND COLUMN_NAME = 'order_status'
+        `);
+        const statusSelect = columns.length
+            ? "COALESCE(s.order_status, 'Pending') AS status"
+            : "'Pending' AS status";
+
+        const [rows] = await db.query(`
+            SELECT
+                s.sales_ID AS order_id,
+                DATE_FORMAT(s.sales_date, '%Y-%m-%d %H:%i') AS order_date,
+                COALESCE(c.customer_name, 'Walk-in Customer') AS customer_name,
+                COALESCE(c.customer_email, '-') AS customer_email,
+                GROUP_CONCAT(
+                    CONCAT(
+                        COALESCE(p.product_name, CONCAT('Product #', sd.product_ID)),
+                        ' x',
+                        sd.sales_details_quantity,
+                        ' @ ₵',
+                        FORMAT(sd.sales_details_price, 2)
+                    )
+                    ORDER BY sd.sales_details_ID
+                    SEPARATOR '; '
+                ) AS books_ordered,
+                s.sales_total_amount AS total_amount,
+                ${statusSelect}
+            FROM sales s
+            LEFT JOIN customer c ON s.customer_ID = c.customer_ID
+            LEFT JOIN sales_details sd ON s.sales_ID = sd.sales_ID
+            LEFT JOIN product p ON sd.product_ID = p.product_ID
+            GROUP BY
+                s.sales_ID,
+                s.sales_date,
+                c.customer_name,
+                c.customer_email,
+                s.sales_total_amount
+                ${columns.length ? ", s.order_status" : ""}
+            ORDER BY s.sales_date DESC, s.sales_ID DESC
+        `);
+
+        res.json(rows);
+    } catch (error) {
+        console.error("Customer orders report error:", error);
+        res.status(500).json({ message: "Could not generate customer orders report." });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Book shop server running at http://localhost:${port}`);
 });
