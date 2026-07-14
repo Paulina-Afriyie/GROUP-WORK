@@ -153,6 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const reportConfigs = {
         "daily-sales": {
+            title: "Daily Sales Report",
             headers: ["Date", "Total Orders", "Total Revenue (₵)"],
             mapper: (row) => [
                 row.date,
@@ -161,6 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]
         },
         "monthly-sales": {
+            title: "Monthly Sales Report",
             headers: ["Month", "Total Orders", "Total Revenue (₵)"],
             mapper: (row) => [
                 row.month,
@@ -169,6 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]
         },
         "stock-levels": {
+            title: "Stock Level Report",
             headers: ["Product ID", "Book Title", "Stock Level", "Price (₵)", "Category", "Supplier"],
             mapper: (row) => [
                 row.id,
@@ -180,6 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]
         },
         "supplier-products": {
+            title: "Supplier Product Report",
             headers: ["Supplier Name", "Product Name", "Quantity Left", "Price (₵)"],
             mapper: (row) => [
                 row.supplier,
@@ -189,6 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]
         },
         "customers-per-day": {
+            title: "Customers Served per Day",
             headers: ["Date", "Registered Customers Served", "Total Checkouts"],
             mapper: (row) => [
                 row.date,
@@ -230,11 +235,25 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.removeChild(downloadLink);
     }
 
+    function printCurrentReport() {
+        if (activeSection !== "reports") return;
+        if (tableBody.textContent.includes("Loading report details")) {
+            alert("Please wait for the report to finish loading before printing.");
+            return;
+        }
+        if (tableBody.textContent.includes("Failed to load report from server")) {
+            alert("The report could not be loaded, so there is nothing ready to print.");
+            return;
+        }
+        window.print();
+    }
+
     async function loadReport(reportType) {
         const config = reportConfigs[reportType];
         if (!config) return;
 
         tableHeaders.innerHTML = config.headers.map(h => `<th>${h}</th>`).join("");
+        tableTitle.innerText = config.title || "Report Preview Data";
         tableBody.innerHTML = `<tr><td colspan="${config.headers.length}">Loading report details...</td></tr>`;
 
         try {
@@ -471,6 +490,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadSection(sectionKey) {
+        document.body.dataset.activeSection = sectionKey;
+
         // If reports toolbar exists, hide it by default
         const reportsToolbar = document.getElementById("reports-toolbar");
         if (reportsToolbar) reportsToolbar.style.display = "none";
@@ -500,9 +521,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 toolbar.style.border = "1px solid var(--border-color)";
                 
                 toolbar.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--text-muted);">Select Report:</span>
-                        <select id="report-type-select" style="padding: 0.5rem 1rem; border-radius: 0.375rem; border: 1px solid var(--border-color); font-size: 0.9rem; background: white; font-weight: 600; outline: none; cursor: pointer;">
+                    <div class="report-select">
+                        <span>Select Report:</span>
+                        <select id="report-type-select">
                             <option value="daily-sales">Daily Sales Report (Daily)</option>
                             <option value="monthly-sales">Monthly Sales Report (Monthly)</option>
                             <option value="stock-levels">Stock Level Report (Weekly)</option>
@@ -510,10 +531,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             <option value="customers-per-day">Customers Served per Day (Daily)</option>
                         </select>
                     </div>
-                    <button class="primary-action-btn" id="export-csv-btn" type="button" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
-                        <span>📥 Export to CSV</span>
-                        
-                    
+                    <div class="report-actions">
+                        <button class="secondary-action-btn" id="print-report-btn" type="button">Print Report</button>
+                        <button class="primary-action-btn" id="export-csv-btn" type="button">Export to CSV</button>
+                    </div>
                 `;
                 
                 // Insert it after the section header
@@ -528,6 +549,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const activeReport = selectEl.value;
                     exportTableToCSV(`${activeReport}-report.csv`);
                 });
+                toolbar.querySelector("#print-report-btn").addEventListener("click", printCurrentReport);
             } else {
                 toolbar.style.display = "flex";
             }

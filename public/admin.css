@@ -260,6 +260,31 @@ body {
     background: #cbd5e1;
 }
 
+.report-select,
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.report-select span {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.report-select select {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
+    padding: 0.5rem 1rem;
+}
+
 .record-form {
     border: 1px solid var(--border-color);
     border-radius: 0.75rem;
@@ -494,5 +519,86 @@ tr:hover td {
 
     .table-responsive table {
         min-width: 100%;
+    }
+}
+
+@media print {
+    @page {
+        margin: 0.65in;
+    }
+
+    body[data-active-section="reports"] {
+        background: white;
+        color: #111827;
+        display: block;
+        min-height: auto;
+    }
+
+    body[data-active-section="reports"] .sidebar,
+    body[data-active-section="reports"] .admin-profile,
+    body[data-active-section="reports"] .stats-grid,
+    body[data-active-section="reports"] #reports-toolbar,
+    body[data-active-section="reports"] #toggle-form-btn,
+    body[data-active-section="reports"] .record-form {
+        display: none !important;
+    }
+
+    body[data-active-section="reports"] .main-content {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+    }
+
+    body[data-active-section="reports"] .header {
+        border-bottom: 1px solid #111827;
+        display: block;
+        margin: 0 0 1rem;
+        padding: 0 0 0.5rem;
+    }
+
+    body[data-active-section="reports"] .header h1 {
+        color: #111827;
+        font-size: 20pt;
+    }
+
+    body[data-active-section="reports"] .data-section {
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    body[data-active-section="reports"] .section-header {
+        display: block;
+        margin-bottom: 0.75rem;
+    }
+
+    body[data-active-section="reports"] .section-header h2 {
+        color: #111827;
+        font-size: 14pt;
+    }
+
+    body[data-active-section="reports"] .table-responsive {
+        overflow: visible;
+    }
+
+    body[data-active-section="reports"] table {
+        border-collapse: collapse;
+        font-size: 10pt;
+        width: 100%;
+    }
+
+    body[data-active-section="reports"] th,
+    body[data-active-section="reports"] td {
+        border: 1px solid #cbd5e1;
+        color: #111827;
+        padding: 0.35rem 0.45rem;
+    }
+
+    body[data-active-section="reports"] th {
+        background: #e5e7eb !important;
+    }
+
+    body[data-active-section="reports"] tr:hover td {
+        background: transparent;
     }
 }
