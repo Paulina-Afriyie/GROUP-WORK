@@ -3,7 +3,7 @@ const API_BASE = (() => {
     if (origin && origin !== 'null' && origin !== 'undefined') {
         return origin;
     }
-    return 'http://localhost:3001';
+    return 'http://localhost:3000';
 })();
 
 function showAdminStatus(message, isError = false) {
@@ -653,21 +653,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const useFormData = productSection || hasFileUpload;
-            const entries = Array.from(formData.entries()).map(([key, value]) => {
-                if (value instanceof File) {
-                    return [key, value.name || value.type || "<file>"];
+            // Ensure file input is explicitly attached for products (avoids edge cases)
+            if (productSection) {
+                const fileInput = form.querySelector('input[type="file"][name="product_image"]');
+                if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                    formData.set('product_image', fileInput.files[0]);
                 }
-                return [key, value];
-            });
-            console.debug("Admin product submit", data.endpoint, entries);
-                // Ensure file input is explicitly attached for products (avoids edge cases)
-                if (productSection) {
-                    const fileInput = form.querySelector('input[type="file"][name="product_image"]');
-                    if (fileInput && fileInput.files && fileInput.files.length > 0) {
-                        formData.set('product_image', fileInput.files[0]);
-                        console.debug('Attached product_image file:', fileInput.files[0].name);
-                    }
-                }
+            }
             const options = {
                 method,
                 body: useFormData ? formData : JSON.stringify(Object.fromEntries(formData.entries()))
@@ -676,7 +668,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 options.headers = { "Content-Type": "application/json" };
             }
 
-            console.log("Admin submitting to", url, "options:", options);
             const response = await fetch(url, options);
             const result = await response.json();
 
@@ -685,8 +676,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert(result.message || (isUpdate ? "Could not update record." : "Could not save record."));
                 return;
             }
-            console.log('Saved successfully to', url);
-
             editMode = false;
             editRecordId = null;
             toggleFormBtn.textContent = "Add Record";

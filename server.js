@@ -43,11 +43,6 @@ let emailTransportDetails = '';
 
 async function initializeMailTransporter() {
     if (smtpConfigured) {
-        console.log("EMAIL_HOST:", process.env.EMAIL_HOST);
-console.log("EMAIL_PORT:", process.env.EMAIL_PORT);
-console.log("EMAIL_SECURE:", process.env.EMAIL_SECURE);
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Not Loaded");
         mailTransporter = nodemailer.createTransport({
             host: process.env.EMAIL_HOST,
             port: Number(process.env.EMAIL_PORT) || 587,
@@ -353,8 +348,6 @@ app.post("/api/admin/suppliers", async (req, res) => {
 
 app.post("/api/admin/products", upload.single("product_image"), async (req, res) => {
     try {
-        console.log('POST /api/admin/products req.body:', req.body);
-        console.log('POST /api/admin/products req.file:', req.file);
         const file = req.file;
         const {
             product_name,
@@ -484,8 +477,6 @@ app.put("/api/admin/:section/:id", upload.single("product_image"), async (req, r
                 return res.json({ message: 'Supplier updated.' });
             }
             case 'products': {
-                console.log('PUT /api/admin/products/:id payload:', payload);
-                console.log('PUT /api/admin/products/:id file:', req.file);
                 const { product_name, product_author, product_price, product_quantity_in_stock, supplier_ID, category_ID, product_image } = payload;
                 const file = req.file;
                 const storedImagePath = file ? `images/${file.filename}` : product_image;
@@ -498,7 +489,7 @@ app.put("/api/admin/:section/:id", upload.single("product_image"), async (req, r
                         product_quantity_in_stock = ?,
                         supplier_ID = ?,
                         category_ID = ?,
-                        product_image = ?
+                        product_image = COALESCE(?, product_image)
                      WHERE product_ID = ?`,
                     [
                         product_name,

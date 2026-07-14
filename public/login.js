@@ -33,13 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("currentUser", JSON.stringify(result.user));
             window.location.href = "user.html";
         } catch (error) {
-           
-            const demoName = email.split("@")[0]
-                .replace(/[._-]/g, " ")
-                .replace(/\b\w/g, c => c.toUpperCase());
-            const demoUser = { id: "demo", fullname: demoName, email: email, role: "user" };
-            localStorage.setItem("currentUser", JSON.stringify(demoUser));
-            window.location.href = "user.html";
+            alert("Could not reach the backend server. Please start the server and try again.");
         }
     });
 });

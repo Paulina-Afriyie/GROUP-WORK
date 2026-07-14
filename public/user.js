@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const avatarEl = document.getElementById("user-avatar");
         if (avatarEl && currentUser.fullname) {
             avatarEl.textContent = currentUser.fullname.charAt(0).toUpperCase();
-            avatarEl.title = `Logged in as ${currentUser.fullnodename}`;
+            avatarEl.title = `Logged in as ${currentUser.fullname}`;
         }
     } catch (err) {
         console.error("Error setting avatar:", err);
@@ -775,15 +775,7 @@ function setupProfile() {
                 throw new Error(err.message || 'Update failed.');
             }
         } catch (err) {
-            // Offline fallback: update localStorage only
-            if (currentUser) {
-                setCurrentUser({ ...currentUser, fullname, email });
-                showFormMsg(msgEl, '✅ Profile saved locally (server unavailable).', 'success');
-                const avatarEl = document.getElementById('user-avatar');
-                if (avatarEl) avatarEl.textContent = fullname.charAt(0).toUpperCase();
-            } else {
-                showFormMsg(msgEl, err.message || 'Could not update profile.', 'error');
-            }
+            showFormMsg(msgEl, err.message || 'Could not update profile.', 'error');
         }
     });
 }

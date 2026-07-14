@@ -15,10 +15,12 @@ CREATE TABLE IF NOT EXISTS category (
 CREATE TABLE IF NOT EXISTS product (
     product_ID INT AUTO_INCREMENT PRIMARY KEY,
     product_name VARCHAR(150) NOT NULL,
+    product_author VARCHAR(100),
     product_price DECIMAL(10, 2) NOT NULL,
     product_quantity_in_stock INT NOT NULL DEFAULT 0,
     supplier_ID INT,
     category_ID INT,
+    product_image VARCHAR(255),
     FOREIGN KEY (supplier_ID) REFERENCES supplier(supplier_ID),
     FOREIGN KEY (category_ID) REFERENCES category(category_ID)
 );
@@ -57,28 +59,6 @@ CREATE TABLE IF NOT EXISTS sales_details (
     sales_details_price DECIMAL(10, 2) NOT NULL,
     FOREIGN KEY (sales_ID) REFERENCES sales(sales_ID),
     FOREIGN KEY (product_ID) REFERENCES product(product_ID)
-);
-
-INSERT INTO category (category_name)
-SELECT name FROM categories
-ON DUPLICATE KEY UPDATE category_name = VALUES(category_name);
-
-INSERT INTO supplier (supplier_name, supplier_address, supplier_phone_number)
-SELECT supplier_name, address, phone_number FROM suppliers
-WHERE NOT EXISTS (
-    SELECT 1 FROM supplier WHERE supplier.supplier_name = suppliers.supplier_name
-);
-
-INSERT INTO product (product_name, product_price, product_quantity_in_stock, category_ID)
-SELECT
-    books.title,
-    books.price,
-    books.stock,
-    category.category_ID
-FROM books
-LEFT JOIN category ON category.category_name = books.category
-WHERE NOT EXISTS (
-    SELECT 1 FROM product WHERE product.product_name = books.title
 );
 
 INSERT INTO customer (customer_name, customer_email)

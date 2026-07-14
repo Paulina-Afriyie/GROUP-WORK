@@ -33,8 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("currentUser", JSON.stringify(result.user));
             window.location.href = "admin.html";
         } catch (error) {
-            alert("Start the backend server to use database login. Demo redirect is being used for now.");
-            window.location.href = "admin.html";
+            alert("Could not reach the backend server. Please start the server and try again.");
         }
     });
 });

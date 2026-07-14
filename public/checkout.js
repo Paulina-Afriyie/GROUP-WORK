@@ -241,11 +241,6 @@ function setupForm() {
             renderCheckoutItems();
             showSuccess();
         } catch (error) {
-            // Fallback: save locally even if server failed
-            if (cart.length > 0) {
-                const fallbackOrder = { items: cart.map(item => ({ ...item })), total: totalPrice };
-                saveOrderToHistory(fallbackOrder, null);
-            }
             if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Place Order'; }
             alert(error.message || 'Could not complete checkout. Please try again.');
         }

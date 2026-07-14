@@ -38,9 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Account created. Please sign in.");
             window.location.href = "login.html";
         } catch (error) {
-            localStorage.setItem("pendingUser", JSON.stringify(user));
-            alert("Start the backend server to save this account in MySQL. Demo storage was used for now.");
-            window.location.href = "login.html";
+            alert("Could not reach the backend server. Please start the server and try again.");
         }
     });
 });
