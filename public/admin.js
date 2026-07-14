@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ]
         },
         customers: {
-            title: "Customer",
+            title: "Customers",
             tableTitle: "Registered Customers",
             headers: ["Customer ID", "Customer Name", "Address", "Phone Number", "Email"],
             endpoint: "customers",
